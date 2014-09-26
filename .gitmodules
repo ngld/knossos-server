@@ -1,0 +1,3 @@
+[submodule "knossos"]
+	path = knossos
+	url = ../knossos.git
