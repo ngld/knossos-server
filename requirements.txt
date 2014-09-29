@@ -3,3 +3,4 @@ Flask-SQLAlchemy==2.0
 Flask-uWSGI-WebSocket==0.2.5
 Jinja2==2.7.3
 SQLAlchemy==0.9.7
+six==1.8.0
