@@ -1,4 +1,3 @@
-#!/usr/bin/python
 ## Copyright 2014 fs2mod-py authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,20 +12,6 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
-from __future__ import absolute_import, print_function
-import logging
-import sys
-import os
 
-logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
-sys.path.insert(1, os.path.join(os.path.dirname(__file__), 'knossos'))
-sys.path.insert(1, os.path.join(os.path.dirname(__file__), 'third_party'))
-
-print(sys.path)
-
-from slib.central import app
-from slib import views
-
-
-if __name__ == '__main__':
-    app.run(debug=True)
+def app_config(app):
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///./test.db'

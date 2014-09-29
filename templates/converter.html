@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Knossos Converter</title>
+        <meta charset="utf8">
+        <link rel="stylesheet" type="text/css" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+        <link rel="stylesheet" type="text/css" href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css">
+        <style type="text/css">
+            .fa-check {
+                color: rgb(0, 160, 0);
+            }
+
+            .fa-times {
+                color: rgb(160, 0, 0);
+            }
+        </style>
+        <script type="text/javascript" src="//code.jquery.com/jquery.min.js"></script>
+        <script type="text/javascript" src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Knossos Converter</h1>
+
+            <div id="info">
+                <textarea id="data" class="form-control"></textarea>
+                <br>
+                <button id="sub" class="btn btn-primary" disabled>Connecting...</button>
+            </div>
+
+            <div id="detail" class="hide">
+                <div class="progress">
+                    <div id="master-pg" class="progress-bar progress-bar-success" style="width: 0%;"></div>
+                </div>
+
+                <pre id="pg-well"></pre>
+                <hr>
+                <pre id="logging"></pre>
+            </div>
+
+            <div id="result" class="hide">
+                <pre id="result_pre"></pre>
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            var ws, ticket;
+
+            function do_convert(e) {
+                e.preventDefault();
+
+                $('#info').hide();
+                $('#detail').removeClass('hide');
+
+                var log = $('#logging');
+                log.height($(window).height() - log.offset().top - 50);
+
+                $.ajax({
+                    type: 'POST',
+                    url: '/api/converter/request',
+                    dataType: 'json',
+                    data: {
+                        passwd: 'secret',
+                        data: $('#data').val()
+                    },
+
+                    success: function (res) {
+                        ticket = res;
+                        show_progress();
+                    }
+                });
+            }
+
+            function show_progress() {
+                ws = new WebSocket('ws://localhost:5000/ws/converter');
+                ws.addEventListener('open', function () {
+                    ws.send(ticket.ticket);
+                });
+                ws.addEventListener('message', function (e) {
+                    var m = JSON.parse(e.data);
+
+                    switch(m[0]) {
+                        case 'log_message':
+                            $('#logging').append(m[1].replace(/</g, '&lt;').replace(/>/g, '&gt;') + '\n').scrollTop(9999999);
+                            break;
+                        case 'progress':
+                            $('#master-pg').css({ width: (m[1] * 100) + '%' });
+                            $('#pg-well').text(m[2]);
+
+                            var log = $('#logging');
+                            log.height($(window).height() - log.offset().top - 50);
+
+                            break;
+                        case 'done':
+                            alert('Done!');
+
+                            $.ajax({
+                                type: 'POST',
+                                url: '/api/converter/retrieve',
+                                dataType: 'json',
+                                data: {
+                                    ticket: ticket.ticket,
+                                    token: ticket.token
+                                },
+
+                                success: function (res) {
+                                    $('#detail').hide();
+                                    $('#result').removeClass('hide');
+
+                                    $('#result_pre').text(JSON.stringify(res));
+                                }
+                            });
+                    }
+                });
+            }
+
+            $(function () {
+                $('#sub').html('Convert!').prop('disabled', false).click(do_convert);
+                $('#data').height($(window).height() - $('#data').offset().top - 100);
+            });
+        </script>
+    </body>
+</html>
