@@ -22,8 +22,6 @@ logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(threadName)s:%(
 sys.path.insert(1, os.path.join(os.path.dirname(__file__), 'knossos'))
 sys.path.insert(1, os.path.join(os.path.dirname(__file__), 'third_party'))
 
-print(sys.path)
-
 from slib.central import app
 from slib import views
 
