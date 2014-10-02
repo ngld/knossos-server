@@ -5,7 +5,7 @@ Various scripts / tools which are related to Knossos but belong on a server, not
 ## Dependencies
 
 To run these scripts you'll need the following:
-* [Python][py] 2 or 3
+* [Python][py] 3
 * [Six][six]
 * [7zip][7z] (IMPORTANT: This script needs the full implementation, i.e. ```p7zip-full``` _and_ ```p7zip-rar``` on Ubuntu)
 * [semantic_version][sv]

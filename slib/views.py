@@ -16,6 +16,7 @@ import os
 import logging
 import tempfile
 import time
+import base64
 
 from flask import request, json, jsonify, render_template
 
@@ -60,7 +61,7 @@ def conv_retrieve():
 
 
 @ws.route('/ws/converter')
-@ws_logging
+@ws_logging(logging.INFO, '%(levelname)s: %(message)s')
 def do_convert(ws):
     os.environ['QT_API'] = 'headless'
     from lib import progress
@@ -81,32 +82,46 @@ def do_convert(ws):
         progress.set_callback(p_update)
         cb()
 
-    in_fd, repo = tempfile.mkstemp()
-    os.close(in_fd)
+    with tempfile.TemporaryDirectory() as tdir:
+        repo = os.path.join(tdir, 'repo.json')
+        output = os.path.join(tdir, 'out.json')
 
-    out_fd, output = tempfile.mkstemp()
-    os.close(out_fd)
+        try:
+            mid = int(ws.receive())
+            tk = db.session.query(models.ConvRequest).filter_by(id_=mid).one()
 
-    try:
-        mid = int(ws.receive())
-        tk = db.session.query(models.ConvRequest).filter_by(id_=mid).one()
+            with open(repo, 'w') as stream:
+                stream.write(tk.data)
 
-        with open(repo, 'w') as stream:
-            stream.write(tk.data)
+            import converter
 
-        import converter
+            #converter.main(['checksums', repo, output], p_wrap)
+            result = converter.generate_checksums(repo, output, p_wrap)
+        except:
+            logging.exception('Failed to process request!')
+        else:
+            with open(output, 'r') as stream:
+                tk.result = stream.read()
 
-        converter.main(['checksums', repo, output], p_wrap)
-    except:
-        logging.exception('Failed to process request!')
-    else:
-        with open(output, 'r') as stream:
-            tk.result = stream.read()
+            try:
+                # Embed all logos...
+                obj = json.loads(tk.result)
+                for m in obj['mods']:
+                    if m.get('logo'):
+                        logo = os.path.join(tdir, m['logo'])
+                        if os.path.isfile(logo):
+                            root, ext = os.path.splitext(logo)
+                            data = 'data:image/' + ext[1:] + ',base64;'
+                            with open(logo, 'rb') as stream:
+                                data += base64.b64encode(stream.read()).decode('utf8')
 
-        db.session.add(tk)
-        db.session.commit()
+                            m['logo'] = data
 
-        ws.send(json.dumps(('done',)))
-    finally:
-        os.unlink(repo)
-        os.unlink(output)
+                tk.result = json.dumps(obj)
+            except:
+                raise
+
+            db.session.add(tk)
+            db.session.commit()
+
+            ws.send(json.dumps(('done', result)))

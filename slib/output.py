@@ -39,19 +39,22 @@ class WebSocketHandler(logging.Handler):
         self.socket.send(data)
 
 
-def ws_logging(func):
-    @functools.wraps(func)
-    def wrapper(ws):
-        h = WebSocketHandler(ws, logging.INFO)
-        h.setFormatter(logging.Formatter('%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'))
-        l = logging.getLogger()
-        l.addHandler(h)
+def ws_logging(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(ws):
+            h = WebSocketHandler(ws, level)
+            h.setFormatter(logging.Formatter(format))
+            l = logging.getLogger()
+            l.addHandler(h)
 
-        func(ws)
+            func(ws)
 
-        l.removeHandler(h)
+            l.removeHandler(h)
 
-    return wrapper
+        return wrapper
+
+    return decorator
 
 
 def str_random(slen):

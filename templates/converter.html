@@ -14,7 +14,7 @@
                 color: rgb(160, 0, 0);
             }
         </style>
-        <script type="text/javascript" src="//code.jquery.com/jquery.min.js"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='jquery.min.js') }}"></script>
         <script type="text/javascript" src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
     </head>
     <body>
@@ -35,10 +35,14 @@
                 <pre id="pg-well"></pre>
                 <hr>
                 <pre id="logging"></pre>
+                <br>
+                <button id="det-continue" class="btn hide">Continue</button>
             </div>
 
             <div id="result" class="hide">
                 <pre id="result_pre"></pre>
+
+                <button id="res-back" class="btn btn-primary">Back</button>
             </div>
         </div>
 
@@ -49,7 +53,7 @@
                 e.preventDefault();
 
                 $('#info').hide();
-                $('#detail').removeClass('hide');
+                $('#detail').show();
 
                 var log = $('#logging');
                 log.height($(window).height() - log.offset().top - 50);
@@ -71,7 +75,8 @@
             }
 
             function show_progress() {
-                ws = new WebSocket('ws://' + location.hostname + '/ws/converter');
+                var url = location.href.replace(/^https?:\/\/([^\/]+)\/.*$/, 'ws://$1/');
+                ws = new WebSocket(url + 'ws/converter');
                 ws.addEventListener('open', function () {
                     ws.send(ticket.ticket);
                 });
@@ -91,7 +96,15 @@
 
                             break;
                         case 'done':
-                            alert('Done!');
+                            if(m[1]) {
+                                alert('Done!');
+                                $('#det-continue').addClass('btn-success');
+                            } else {
+                                alert('Failed!');
+                                $('#det-continue').addClass('btn-danger');
+                            }
+
+                            $('#det-continue').show();
 
                             $.ajax({
                                 type: 'POST',
@@ -103,9 +116,6 @@
                                 },
 
                                 success: function (res) {
-                                    $('#detail').hide();
-                                    $('#result').removeClass('hide');
-
                                     $('#result_pre').text(JSON.stringify(res));
                                 }
                             });
@@ -116,6 +126,19 @@
             $(function () {
                 $('#sub').html('Convert!').prop('disabled', false).click(do_convert);
                 $('#data').height($(window).height() - $('#data').offset().top - 100);
+
+                $('#det-continue').click(function (e) {
+                    e.preventDefault();
+                    $('#detail').hide();
+                    $('#result').show();
+                });
+                $('#res-back').click(function (e) {
+                    e.preventDefault();
+                    $('#detail').show();
+                    $('#result').hide();
+                });
+
+                $('.hide').hide().removeClass('hide');
             });
         </script>
     </body>
