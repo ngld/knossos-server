@@ -20,3 +20,11 @@ class ConvRequest(db.Model):
     token = db.Column(db.String(30))
     data = db.Column(db.String)
     result = db.Column(db.String)
+    status = db.Column(db.Integer)
+    webhook = db.Column(db.String)
+
+    # Constants
+    WAITING = 1
+    WORKING = 2
+    DONE = 3
+    FAILED = 4

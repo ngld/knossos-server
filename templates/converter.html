@@ -28,13 +28,7 @@
             </div>
 
             <div id="detail" class="hide">
-                <div class="progress">
-                    <div id="master-pg" class="progress-bar progress-bar-success" style="width: 0%;"></div>
-                </div>
-
-                <pre id="pg-well"></pre>
-                <hr>
-                <pre id="logging"></pre>
+                <div id="det-display">Please wait...</div>
                 <br>
                 <button id="det-continue" class="btn hide">Continue</button>
             </div>
@@ -46,6 +40,7 @@
             </div>
         </div>
 
+        <script type="text/javascript" src="{{ url_for('static', filename='converter.js') }}"></script>
         <script type="text/javascript">
             var ws, ticket;
 
@@ -54,9 +49,6 @@
 
                 $('#info').hide();
                 $('#detail').show();
-
-                var log = $('#logging');
-                log.height($(window).height() - log.offset().top - 50);
 
                 $.ajax({
                     type: 'POST',
@@ -76,51 +68,34 @@
 
             function show_progress() {
                 var url = location.href.replace(/^https?:\/\/([^\/]+)\/.*$/, 'ws://$1/');
-                ws = new WebSocket(url + 'ws/converter');
-                ws.addEventListener('open', function () {
-                    ws.send(ticket.ticket);
-                });
-                ws.addEventListener('message', function (e) {
-                    var m = JSON.parse(e.data);
-
-                    switch(m[0]) {
-                        case 'log_message':
-                            $('#logging').append(m[1].replace(/</g, '&lt;').replace(/>/g, '&gt;') + '\n').scrollTop(9999999);
-                            break;
-                        case 'progress':
-                            $('#master-pg').css({ width: (m[1] * 100) + '%' });
-                            $('#pg-well').text(m[2]);
-
-                            var log = $('#logging');
-                            log.height($(window).height() - log.offset().top - 50);
-
-                            break;
-                        case 'done':
-                            if(m[1]) {
-                                alert('Done!');
-                                $('#det-continue').addClass('btn-success');
-                            } else {
-                                alert('Failed!');
-                                $('#det-continue').addClass('btn-danger');
-                            }
-
-                            $('#det-continue').show();
-
-                            $.ajax({
-                                type: 'POST',
-                                url: '/api/converter/retrieve',
-                                dataType: 'json',
-                                data: {
-                                    ticket: ticket.ticket,
-                                    token: ticket.token
-                                },
-
-                                success: function (res) {
-                                    $('#result_pre').text(JSON.stringify(res));
-                                }
-                            });
+                ws = new Converter(url + 'ws/converter', ticket.ticket);
+                ws.on('done', function (success) {
+                    if(success) {
+                        alert('Done!');
+                        $('#det-continue').addClass('btn-success');
+                    } else {
+                        alert('Failed!');
+                        $('#det-continue').addClass('btn-danger');
                     }
+
+                    $('#det-continue').show();
+
+                    $.ajax({
+                        type: 'POST',
+                        url: '/api/converter/retrieve',
+                        dataType: 'json',
+                        data: {
+                            ticket: ticket.ticket,
+                            token: ticket.token
+                        },
+
+                        success: function (res) {
+                            $('#result_pre').text(JSON.stringify(res));
+                        }
+                    });
                 });
+                ws.bootstrap_ui($('#det-display'));
+                ws.connect();
             }
 
             $(function () {

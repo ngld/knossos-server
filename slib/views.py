@@ -37,7 +37,10 @@ def conv_request():
     data = request.form.get('data', None)
     token = str_random(30)
 
-    r = models.ConvRequest(token=token, data=data)
+    r = models.ConvRequest(token=token, data=data,
+        webhook=request.form.get('webhook', ''),
+        status=models.ConvRequest.WAITING)
+
     db.session.add(r)
     db.session.commit()
 
@@ -47,17 +50,31 @@ def conv_request():
     )
 
 
+@app.route('/api/converter/get_status/<int:ticket>')
+def conv_get_status(ticket):
+    try:
+        r = db.session.query(models.ConvRequest).filter_by(id_=ticket).one()
+    except:
+        logging.exception('Couldn\'t find converter ticket!')
+        return 0
+
+    return r.status
+
+
 @app.route('/api/converter/retrieve', methods=('POST',))
 def conv_retrieve():
     r = db.session.query(models.ConvRequest).filter_by(id_=request.form.get('ticket', None)).one()
     if r.token != request.form.get('token'):
         return ('Failed to validate token!', 403, [])
 
-    data = r.result
+    data = {
+        'json': r.result,
+        'success': r.status == models.ConvRequest.DONE
+    }
     db.session.delete(r)
     db.session.commit()
 
-    return data
+    return json.dumps(data)
 
 
 @ws.route('/ws/converter')
@@ -90,6 +107,10 @@ def do_convert(ws):
             mid = int(ws.receive())
             tk = db.session.query(models.ConvRequest).filter_by(id_=mid).one()
 
+            tk.status = models.ConvRequest.WORKING
+            db.session.add(tk)
+            db.session.commit()
+
             with open(repo, 'w') as stream:
                 stream.write(tk.data)
 
@@ -102,6 +123,11 @@ def do_convert(ws):
         else:
             with open(output, 'r') as stream:
                 tk.result = stream.read()
+
+            if result:
+                tk.status = models.ConvRequest.DONE
+            else:
+                tk.status = models.ConvRequest.FAILED
 
             try:
                 # Embed all logos...
