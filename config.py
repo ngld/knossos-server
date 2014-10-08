@@ -15,3 +15,4 @@
 
 def app_config(app):
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///./test.db'
+    app.config['API_KEYS'] = ('<secret>')

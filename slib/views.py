@@ -16,7 +16,8 @@ import os
 import logging
 import tempfile
 import time
-import base64
+from urllib.request import urlopen
+from urllib.parse import urlencode
 
 from flask import request, json, jsonify, render_template
 
@@ -32,13 +33,15 @@ def render_conv():
 
 @app.route('/api/converter/request', methods=('POST',))
 def conv_request():
-    logging.info('Received password "%s".', request.form.get('passwd', 'None!'))
+    passwd = request.form.get('passwd')
+    if passwd not in app.config['API_KEYS']:
+        return 'Access denied', 403
 
     data = request.form.get('data', None)
     token = str_random(30)
 
     r = models.ConvRequest(token=token, data=data,
-        webhook=request.form.get('webhook', ''),
+        webhook=request.form.get('webhook', None),
         status=models.ConvRequest.WAITING)
 
     db.session.add(r)
@@ -116,38 +119,43 @@ def do_convert(ws):
 
             import converter
 
-            #converter.main(['checksums', repo, output], p_wrap)
             result = converter.generate_checksums(repo, output, p_wrap)
+
+            if os.path.isfile(output):
+                with open(output, 'r') as stream:
+                    tk.result = stream.read()
         except:
             logging.exception('Failed to process request!')
+            result = False
+        
+        if result:
+            tk.status = models.ConvRequest.DONE
         else:
-            with open(output, 'r') as stream:
-                tk.result = stream.read()
+            tk.status = models.ConvRequest.FAILED
 
-            if result:
-                tk.status = models.ConvRequest.DONE
-            else:
-                tk.status = models.ConvRequest.FAILED
+        # try:
+        #     # Embed all logos...
+        #     obj = json.loads(tk.result)
+        #     for m in obj['mods']:
+        #         if m.get('logo'):
+        #             logo = os.path.join(tdir, m['logo'])
+        #             if os.path.isfile(logo):
+        #                 root, ext = os.path.splitext(logo)
+        #                 data = 'data:image/' + ext[1:] + ',base64;'
+        #                 with open(logo, 'rb') as stream:
+        #                     data += base64.b64encode(stream.read()).decode('utf8')
 
-            try:
-                # Embed all logos...
-                obj = json.loads(tk.result)
-                for m in obj['mods']:
-                    if m.get('logo'):
-                        logo = os.path.join(tdir, m['logo'])
-                        if os.path.isfile(logo):
-                            root, ext = os.path.splitext(logo)
-                            data = 'data:image/' + ext[1:] + ',base64;'
-                            with open(logo, 'rb') as stream:
-                                data += base64.b64encode(stream.read()).decode('utf8')
+        #                 m['logo'] = data
 
-                            m['logo'] = data
+        #     tk.result = json.dumps(obj)
+        # except:
+        #     pass
 
-                tk.result = json.dumps(obj)
-            except:
-                raise
+        db.session.add(tk)
+        db.session.commit()
 
-            db.session.add(tk)
-            db.session.commit()
+        if tk.webhook is not None:
+            hdl = urlopen(tk.webhook, data=urlencode({'ticket': tk.id_}))
+            hdl.close()
 
-            ws.send(json.dumps(('done', result)))
+        ws.send(json.dumps(('done', result)))
