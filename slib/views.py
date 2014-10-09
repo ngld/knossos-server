@@ -42,7 +42,8 @@ def conv_request():
 
     r = models.ConvRequest(token=token, data=data,
         webhook=request.form.get('webhook', None),
-        status=models.ConvRequest.WAITING)
+        status=models.ConvRequest.WAITING,
+        expire=time.time() + 1 * 24 * 60 * 60)  # Will expire after a day
 
     db.session.add(r)
     db.session.commit()
@@ -70,14 +71,22 @@ def conv_retrieve():
     if r.token != request.form.get('token'):
         return ('Failed to validate token!', 403, [])
 
-    data = {
-        'json': r.result,
-        'success': r.status == models.ConvRequest.DONE
-    }
+    if r.status not in (models.ConvRequest.DONE, models.ConvRequest.FAILED):
+        return jsonify(
+            json=None,
+            success=False,
+            finished=False
+        )
+
+    data = jsonify(
+        json=r.result,
+        success=r.status == models.ConvRequest.DONE,
+        finished=True
+    )
     db.session.delete(r)
     db.session.commit()
 
-    return json.dumps(data)
+    return data
 
 
 @ws.route('/ws/converter')

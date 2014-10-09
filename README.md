@@ -21,6 +21,7 @@ Take a look at the scripts in the root directory.
 ## License
 
 Licensed under the [Apache License, Version 2.0](LICENSE).
+The third party code contained in third_party and static is licensed under the MIT License. The relevant files are marked accordingly.
 
 [py]: http://www.python.org/
 [six]: https://pypi.python.org/pypi/six/

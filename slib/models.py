@@ -22,6 +22,7 @@ class ConvRequest(db.Model):
     result = db.Column(db.String)
     status = db.Column(db.Integer)
     webhook = db.Column(db.String)
+    expire = db.Column(db.Integer)
 
     # Constants
     WAITING = 1

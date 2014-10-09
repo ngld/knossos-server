@@ -6,7 +6,7 @@
                     '<div class="progress">' +
                     '    <div id="cv-pg-bar" class="progress-bar progress-bar-striped active" style="width: 0%;"></div>' +
                     '</div>' +
-                    '<pre id="cv-pg-display"></pre>' +
+                    '<pre id="cv-pg-display">Initialising...</pre>' +
                     '<br>' +
                     '<h4><span class="glyphicon glyphicon-list"></span> Log</h4>' +
                     '<hr>' +
