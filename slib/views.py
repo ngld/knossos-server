@@ -181,7 +181,7 @@ def do_convert(ws):
 
         if tk.webhook is not None:
             try:
-                hdl = urlopen(tk.webhook, data=urlencode({'ticket': tk.id_}))
+                hdl = urlopen(tk.webhook, data=urlencode({'ticket': tk.id_}).encode('utf8'))
                 hdl.close()
             except:
                 logging.exception('Webhook failed!')
