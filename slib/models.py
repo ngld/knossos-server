@@ -18,10 +18,10 @@ from .central import db
 class ConvRequest(db.Model):
     id_ = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String(30))
-    data = db.Column(db.String)
-    result = db.Column(db.String)
+    data = db.Column(db.Text)
+    result = db.Column(db.Text)
     status = db.Column(db.Integer)
-    webhook = db.Column(db.String)
+    webhook = db.Column(db.String(100))
     expire = db.Column(db.Integer)
 
     # Constants
