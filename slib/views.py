@@ -20,6 +20,7 @@ from urllib.request import urlopen
 from urllib.parse import urlencode
 
 from flask import request, json, jsonify, render_template
+from sqlalchemy.orm.exc import NoResultFound
 
 from . import models
 from .output import ws_logging, str_random
@@ -58,7 +59,7 @@ def conv_request():
 def conv_get_status(ticket):
     try:
         r = db.session.query(models.ConvRequest).filter_by(id_=ticket).one()
-    except:
+    except NoResultFound:
         logging.exception('Couldn\'t find converter ticket!')
         return 0
 
@@ -67,7 +68,16 @@ def conv_get_status(ticket):
 
 @app.route('/api/converter/retrieve', methods=('POST',))
 def conv_retrieve():
-    r = db.session.query(models.ConvRequest).filter_by(id_=request.form.get('ticket', None)).one()
+    try:
+        r = db.session.query(models.ConvRequest).filter_by(id_=request.form.get('ticket', None)).one()
+    except NoResultFound:
+        return jsonify(
+            json=None,
+            success=False,
+            finished=True,
+            found=False
+        )
+
     if r.token != request.form.get('token'):
         return ('Failed to validate token!', 403, [])
 
@@ -75,7 +85,8 @@ def conv_retrieve():
         return jsonify(
             json=None,
             success=False,
-            finished=False
+            finished=False,
+            found=True
         )
 
     data = jsonify(
@@ -118,7 +129,12 @@ def do_convert(ws):
         try:
             mid = int(ws.receive())
             tk = db.session.query(models.ConvRequest).filter_by(id_=mid).one()
+        except NoResultFound:
+            logging.exception('Failed to process request!')
+            ws.send(('what ticket?',))
+            return
 
+        try:
             tk.status = models.ConvRequest.WORKING
             db.session.add(tk)
             db.session.commit()
@@ -134,7 +150,7 @@ def do_convert(ws):
                 with open(output, 'r') as stream:
                     tk.result = stream.read()
         except:
-            logging.exception('Failed to process request!')
+            logging.exception('Failed to perform conversion!')
             result = False
         
         if result:
@@ -164,7 +180,10 @@ def do_convert(ws):
         db.session.commit()
 
         if tk.webhook is not None:
-            hdl = urlopen(tk.webhook, data=urlencode({'ticket': tk.id_}))
-            hdl.close()
+            try:
+                hdl = urlopen(tk.webhook, data=urlencode({'ticket': tk.id_}))
+                hdl.close()
+            except:
+                logging.exception('Webhook failed!')
 
         ws.send(json.dumps(('done', result)))
