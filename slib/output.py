@@ -18,6 +18,28 @@ import functools
 import random
 
 
+class MessagesFormatter(logging.Formatter):
+
+    def format(self, record):
+        """
+        Format the specified record as text.
+
+        The record's attribute dictionary is used as the operand to a
+        string formatting operation which yields the returned string.
+        Before formatting the dictionary, a couple of preparatory steps
+        are carried out. The message attribute of the record is computed
+        using LogRecord.getMessage(). If the formatting string uses the
+        time (as determined by a call to usesTime(), formatTime() is
+        called to format the event time. If there is exception information,
+        it is formatted using formatException() and appended to the message.
+        """
+        record.message = record.getMessage()
+        if self.usesTime():
+            record.asctime = self.formatTime(record, self.datefmt)
+        s = self.formatMessage(record)
+        return s
+
+
 class WebSocketHandler(logging.Handler):
     socket = None
 
@@ -44,7 +66,7 @@ def ws_logging(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module
         @functools.wraps(func)
         def wrapper(ws):
             h = WebSocketHandler(ws, level)
-            h.setFormatter(logging.Formatter(format))
+            h.setFormatter(MessagesFormatter(format))
             l = logging.getLogger()
             l.addHandler(h)
 
