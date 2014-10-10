@@ -177,13 +177,19 @@ def do_convert(ws):
         #     pass
 
         db.session.add(tk)
-        db.session.commit()
-
+        
         if tk.webhook is not None:
             try:
                 hdl = urlopen(tk.webhook, data=urlencode({'ticket': tk.id_}).encode('utf8'))
+                response = hdl.read().decode('utf8', 'replace').strip()
                 hdl.close()
+
+                if len(response) > 0 and '{' in response:
+                    response = json.loads(response)
+                    if isinstance(response, dict) and response.get('cancelled', False):
+                        db.session.delete(tk)
             except:
                 logging.exception('Webhook failed!')
 
+        db.session.commit()
         ws.send(json.dumps(('done', result)))
