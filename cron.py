@@ -30,7 +30,7 @@ from slib import models
 
 def main():
     with app.test_request_context():
-        db.session.query(models.ConvRequest).filter(models.ConvRequest.expire > time.time()).delete()
+        db.session.query(models.ConvRequest).filter(models.ConvRequest.expire < time.time()).delete()
         db.session.commit()
 
 
