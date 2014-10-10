@@ -48,9 +48,10 @@ def ws_logging(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module
             l = logging.getLogger()
             l.addHandler(h)
 
-            func(ws)
-
-            l.removeHandler(h)
+            try:
+                func(ws)
+            finally:
+                l.removeHandler(h)
 
         return wrapper
 
