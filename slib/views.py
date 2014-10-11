@@ -177,6 +177,7 @@ def do_convert(ws):
         #     pass
 
         db.session.add(tk)
+        db.session.commit()
         
         if tk.webhook is not None:
             try:
@@ -188,8 +189,8 @@ def do_convert(ws):
                     response = json.loads(response)
                     if isinstance(response, dict) and response.get('cancelled', False):
                         db.session.delete(tk)
+                        db.session.commit()
             except:
                 logging.exception('Webhook failed!')
 
-        db.session.commit()
         ws.send(json.dumps(('done', result)))
