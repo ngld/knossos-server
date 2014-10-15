@@ -1,5 +1,7 @@
 (function ($) {
     function bootstrap_ui(container, tpl) {
+        var self = this;
+
         if(!tpl) {
             tpl = '<h4><span class="glyphicon glyphicon-cog"></span> Progress</h4>' +
                     '<hr>' +
@@ -36,6 +38,41 @@
                 prg_bar.addClass('progress-bar-danger');
             }
         });
+        this.on('captcha', function (image) {
+            var win = $('<div>');
+            win.css({
+                position: 'fixed',
+                top: '50%',
+                left: '50%',
+                'min-width': 400,
+                background: 'white',
+                border: '1px solid black',
+                padding: '5px'
+            });
+
+            var form = $('<form>').appendTo(win);
+            var img_el = $('<img>').attr('src', image);
+            var input = $('<input type="text" class="form-control">');
+
+            form.html('Please solve this captcha:<br>');
+            form.append(img_el).append('<br>');
+            form.append(input).append('<br><button type="submit" class="btn btn-primary">Send</button>');
+
+            img_el.load(function () {
+                win.css({
+                    'margin-top': - (win.height() / 2),
+                    'margin-left': - (win.width() / 2)
+                });
+            });
+
+            form.submit(function (e) {
+                e.preventDefault();
+                self.send(input.val());
+                win.remove();
+            });
+
+            $('body').append(win);
+        })
 
         log_display.height($(window).height() - log_display.offset().top - 50);
     }
@@ -60,6 +97,10 @@
             $.each(_listeners[evt] || [], function (i, cb) {
                 cb.apply(null, args);
             });
+        };
+
+        this.send = function (msg) {
+            _ws.send(msg);
         };
 
         this.connect = function (ticket) {

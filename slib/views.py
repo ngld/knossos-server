@@ -23,8 +23,9 @@ from flask import request, json, jsonify, render_template
 from sqlalchemy.orm.exc import NoResultFound
 
 from . import models
-from .output import ws_logging, str_random
+from .output import ws_logging
 from .central import app, db, ws
+from lib.util import str_random
 
 
 @app.route('/converter')
@@ -104,9 +105,14 @@ def conv_retrieve():
 @ws_logging(logging.INFO, '%(levelname)s: %(message)s')
 def do_convert(ws):
     os.environ['QT_API'] = 'headless'
-    from lib import progress
+    from lib import progress, util
+    from converter import download
+
+    download.init_ws_mode(ws)
 
     lu = 0
+    dl_path = None
+    dl_link = None
 
     def p_update(prog, text):
         nonlocal lu
@@ -134,6 +140,29 @@ def do_convert(ws):
             ws.send(json.dumps('what ticket?',))
             return
 
+        if app.config['MIRROR_PATH'] is not None:
+            try:
+                info = json.loads(tk.data)
+            except:
+                # No point in logging invalid JSON here. It will be logged later, anyway.
+                pass
+            else:
+                try:
+                    mods = info['mods']
+                    if len(mods) == 1:
+                        dl_path = os.path.join(os.path.basename(mods[0]['id']), os.path.basename(mods[0]['version']))
+                    else:
+                        dl_path = 'general'
+
+                    dl_link = util.pjoin(app.config['MIRROR_URL'], dl_path)
+                    dl_path = os.path.join(app.config['MIRROR_PATH'], dl_path)
+
+                    if not os.path.isdir(dl_path):
+                        os.makedirs(dl_path)
+                except KeyError:
+                    # We're missing some keys here, this will be logged later, too.
+                    dl_path = None
+
         try:
             tk.status = models.ConvRequest.WORKING
             db.session.add(tk)
@@ -144,11 +173,16 @@ def do_convert(ws):
 
             import converter
 
-            result = converter.generate_checksums(repo, output, p_wrap)
+            result = converter.generate_checksums(repo, output, p_wrap, dl_path, dl_link)
+
+            # Clear the cache to prevent a memory leak.
+            util.HASH_CACHE = {}
 
             if os.path.isfile(output):
                 with open(output, 'r') as stream:
                     tk.result = stream.read()
+        except ValueError as exc:
+            logging.exception('Failed to parse JSON data: %s', str(exc))
         except:
             logging.exception('Failed to perform conversion!')
             result = False
@@ -157,24 +191,6 @@ def do_convert(ws):
             tk.status = models.ConvRequest.DONE
         else:
             tk.status = models.ConvRequest.FAILED
-
-        # try:
-        #     # Embed all logos...
-        #     obj = json.loads(tk.result)
-        #     for m in obj['mods']:
-        #         if m.get('logo'):
-        #             logo = os.path.join(tdir, m['logo'])
-        #             if os.path.isfile(logo):
-        #                 root, ext = os.path.splitext(logo)
-        #                 data = 'data:image/' + ext[1:] + ',base64;'
-        #                 with open(logo, 'rb') as stream:
-        #                     data += base64.b64encode(stream.read()).decode('utf8')
-
-        #                 m['logo'] = data
-
-        #     tk.result = json.dumps(obj)
-        # except:
-        #     pass
 
         db.session.add(tk)
         db.session.commit()
@@ -194,3 +210,5 @@ def do_convert(ws):
                 logging.exception('Webhook failed!')
 
         ws.send(json.dumps(('done', result)))
+
+    download.finish_mode()

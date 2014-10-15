@@ -78,11 +78,3 @@ def ws_logging(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module
         return wrapper
 
     return decorator
-
-
-def str_random(slen):
-    s = ''
-    for i in range(0, slen):
-        s += random.choice('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
-
-    return s

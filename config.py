@@ -16,3 +16,5 @@
 def app_config(app):
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///./test.db'
     app.config['API_KEYS'] = ('<secret>',)
+    app.config['MIRROR_PATH'] = 'dls'
+    app.config['MIRROR_URL'] = 'http://localhost/mirror'
