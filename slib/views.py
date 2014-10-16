@@ -16,6 +16,7 @@ import os
 import logging
 import tempfile
 import time
+import re
 from urllib.request import urlopen
 from urllib.parse import urlencode
 
@@ -105,7 +106,7 @@ def conv_retrieve():
 @ws_logging(logging.INFO, '%(levelname)s: %(message)s')
 def do_convert(ws):
     os.environ['QT_API'] = 'headless'
-    from lib import progress, util
+    from lib import progress, util, qt
     from converter import download
 
     download.init_ws_mode(ws)
@@ -126,7 +127,17 @@ def do_convert(ws):
 
     def p_wrap(cb):
         progress.set_callback(p_update)
+        ws_keep_alive()
         cb()
+
+    def ws_keep_alive():
+        # Make sure the WebSocket connection stays alive.
+        try:
+            ws.send('["keep_alive"]')
+        except:
+            pass
+
+        qt.QtCore.QTimer.singleShot(1000, ws_keep_alive)
 
     with tempfile.TemporaryDirectory() as tdir:
         repo = os.path.join(tdir, 'repo.json')
@@ -136,7 +147,7 @@ def do_convert(ws):
             mid = int(ws.receive())
             tk = db.session.query(models.ConvRequest).filter_by(id_=mid).one()
         except NoResultFound:
-            logging.exception('Failed to process request!')
+            logging.exception('Failed to process request! I can\'t find your ticket.')
             ws.send(json.dumps('what ticket?',))
             return
 
@@ -148,7 +159,11 @@ def do_convert(ws):
                 pass
             else:
                 try:
-                    mods = info['mods']
+                    if 'mods' not in info and 'title' in info and 'id' in info:
+                        mods = [info]
+                    else:
+                        mods = info['mods']
+
                     if len(mods) == 1:
                         dl_path = os.path.join(os.path.basename(mods[0]['id']), os.path.basename(mods[0]['version']))
                     else:
@@ -183,6 +198,7 @@ def do_convert(ws):
                     tk.result = stream.read()
         except ValueError as exc:
             logging.exception('Failed to parse JSON data: %s', str(exc))
+            result = False
         except:
             logging.exception('Failed to perform conversion!')
             result = False
@@ -196,18 +212,21 @@ def do_convert(ws):
         db.session.commit()
         
         if tk.webhook is not None:
-            try:
-                hdl = urlopen(tk.webhook, data=urlencode({'ticket': tk.id_}).encode('utf8'))
-                response = hdl.read().decode('utf8', 'replace').strip()
-                hdl.close()
+            if re.match(r'^https?://(localhost|127\..*)', tk.webhook):
+                logging.warning('Ignored the webhook because it points to localhost.')
+            else:
+                try:
+                    hdl = urlopen(tk.webhook, data=urlencode({'ticket': tk.id_}).encode('utf8'))
+                    response = hdl.read().decode('utf8', 'replace').strip()
+                    hdl.close()
 
-                if len(response) > 0 and '{' in response:
-                    response = json.loads(response)
-                    if isinstance(response, dict) and response.get('cancelled', False):
-                        db.session.delete(tk)
-                        db.session.commit()
-            except:
-                logging.exception('Webhook failed!')
+                    if len(response) > 0 and '{' in response:
+                        response = json.loads(response)
+                        if isinstance(response, dict) and response.get('cancelled', False):
+                            db.session.delete(tk)
+                            db.session.commit()
+                except:
+                    logging.exception('Webhook failed!')
 
         ws.send(json.dumps(('done', result)))
 
