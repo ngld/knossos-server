@@ -147,7 +147,7 @@ def do_convert(ws):
             mid = int(ws.receive())
             tk = db.session.query(models.ConvRequest).filter_by(id_=mid).one()
         except NoResultFound:
-            logging.exception('Failed to process request! I can\'t find your ticket.')
+            logging.exception('Failed to process request! I can\'t find your ticket (%d).', mid)
             ws.send(json.dumps('what ticket?',))
             return
 

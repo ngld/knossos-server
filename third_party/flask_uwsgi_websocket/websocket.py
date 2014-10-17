@@ -51,11 +51,13 @@ class WebSocketMiddleware(object):
         handler = self.websocket.routes.get(environ['PATH_INFO'])
 
         if handler:
-            if 'HTTP_SEC_WEBSOCKET_KEY' not in environ:
-                return 'Not a websocket connection!', 426
-            uwsgi.websocket_handshake(environ['HTTP_SEC_WEBSOCKET_KEY'], environ.get('HTTP_ORIGIN', ''))
-            handler(self.client(environ, uwsgi.connection_fd(), self.websocket.timeout))
-            return ''
+            with self.wsgi_app.request_context(environ):
+                if 'HTTP_SEC_WEBSOCKET_KEY' not in environ:
+                    return 'Not a websocket connection!', 426
+                
+                uwsgi.websocket_handshake(environ['HTTP_SEC_WEBSOCKET_KEY'], environ.get('HTTP_ORIGIN', ''))
+                handler(self.client(environ, uwsgi.connection_fd(), self.websocket.timeout))
+                return ''
         else:
             return self.wsgi_app(environ, start_response)
 
