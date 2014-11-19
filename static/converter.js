@@ -67,7 +67,7 @@
 
             form.submit(function (e) {
                 e.preventDefault();
-                self.send(input.val());
+                self.emit('captcha_response', input.val());
                 win.remove();
             });
 

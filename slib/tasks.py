@@ -296,6 +296,9 @@ class ConverterTask(Task):
             while _result is None:
                 time.sleep(0.3)
 
+        logging.debug('Received captcha response: %s', _result)
+        return _result
+
     def run(self):
         dl_path = None
         dl_link = None
