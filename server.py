@@ -18,13 +18,13 @@ import logging
 import sys
 import os
 
-logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='[%(asctime)s@%(module)s] %(funcName)s %(levelname)s: %(message)s')
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'knossos'))
-sys.path.insert(1, os.path.join(os.path.dirname(__file__), 'third_party'))
 
 from slib.central import app
-from slib import views
+from slib import controllers
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    listen = app.config.API_LISTEN
+    app.run(listen[0], listen[1])

@@ -61,6 +61,25 @@ class WebSocketHandler(logging.Handler):
         self.socket.send(data)
 
 
+class TaskLogHandler(logging.Handler):
+    task = None
+
+    def __init__(self, task, level=logging.NOTSET):
+        super(TaskLogHandler, self).__init__(level)
+
+        self.task = task
+
+    def emit(self, record):
+        try:
+            fr = self.format(record)
+            self.send(fr)
+        except:
+            self.handleError(record)
+
+    def send(self, data):
+        self.task.emit('log_message', data)
+
+
 def ws_logging(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'):
     def decorator(func):
         @functools.wraps(func)

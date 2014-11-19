@@ -18,20 +18,14 @@ import logging
 import sys
 import os
 
-logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='[%(asctime)s@%(module)s] %(funcName)s %(levelname)s: %(message)s')
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'knossos'))
-sys.path.insert(1, os.path.join(os.path.dirname(__file__), 'third_party'))
 
-import time
-
-from slib.central import app, db
-from slib import models
+from slib import tasks
 
 
 def main():
-    with app.test_request_context():
-        db.session.query(models.ConvRequest).filter(models.ConvRequest.expire < time.time()).delete()
-        db.session.commit()
+    tasks.CleanupTask().run_async()
 
 
 if __name__ == '__main__':

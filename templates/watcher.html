@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Knossos Converter</title>
+        <meta charset="utf8">
+        <link rel="stylesheet" type="text/css" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+        <link rel="stylesheet" type="text/css" href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css">
+        <style type="text/css">
+            .fa-check {
+                color: rgb(0, 160, 0);
+            }
+
+            .fa-times {
+                color: rgb(160, 0, 0);
+            }
+        </style>
+        <script type="text/javascript" src="{{ url_for('static', filename='jquery.min.js') }}"></script>
+        <script type="text/javascript" src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Knossos Converter</h1>
+
+            <div id="detail">
+                <div id="det-display">Please wait...</div>
+            </div>
+        </div>
+
+        <script type="text/javascript" src="{{ url_for('static', filename='converter.js') }}"></script>
+        <script type="text/javascript">
+            var ws, ticket;
+
+            function show_progress() {
+                var url = location.href.replace(/^https?:\/\/([^\/]+)\/.*$/, 'ws://$1/').replace(':8080', ':8085');
+                ws = new TaskWatcher(url + 'ws/watcher/{{ task_id }}');
+                ws.on('done', function (success) {
+                    if(success) {
+                        alert('Done!');
+                    } else {
+                        alert('Failed!');
+                    }
+                });
+                ws.bootstrap_ui($('#det-display'));
+                ws.connect();
+            }
+
+            $(function () {
+                $('.hide').hide().removeClass('hide');
+                show_progress();
+            });
+        </script>
+    </body>
+</html>

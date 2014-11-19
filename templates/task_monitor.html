@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Knossos Tasks</title>
+        <meta charset="utf8">
+        <link rel="stylesheet" type="text/css" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+        <style type="text/css">
+            table tbody tr {
+                cursor: pointer !important;
+            }
+        </style>
+        <script type="text/javascript" src="{{ url_for('static', filename='jquery.min.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='monitor.js') }}"></script>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Knossos Tasks</h1>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>State</th>
+                        <th>Runtime</th>
+                        <th>Last state change</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    </body>
+</html>

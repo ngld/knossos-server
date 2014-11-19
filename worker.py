@@ -1,3 +1,4 @@
+#!/usr/bin/python
 ## Copyright 2014 fs2mod-py authors, see NOTICE file
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +13,19 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
+from __future__ import absolute_import, print_function
+import logging
+import sys
+import os
 
-def app_config(app):
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///./test.db'
-    app.config['API_KEYS'] = ('<secret>',)
-    app.config['MIRROR_PATH'] = 'dls'
-    app.config['MIRROR_URL'] = 'http://localhost/mirror'
+logging.basicConfig(level=logging.DEBUG, format='[%(asctime)s@%(module)s] %(funcName)s %(levelname)s: %(message)s')
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'knossos'))
+
+from slib import tasks
+
+
+if __name__ == '__main__':
+    w = tasks.Worker()
+    w.register_task(tasks.ConverterTask)
+    w.register_task(tasks.CleanupTask)
+    w.run()

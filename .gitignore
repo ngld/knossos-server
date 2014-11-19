@@ -2,3 +2,4 @@
 *.pyo
 build
 py-env
+__pycache__

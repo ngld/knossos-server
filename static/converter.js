@@ -78,8 +78,11 @@
     }
 
     function Converter(url, ticket) {
+        TaskWatcher.apply(this, [url.replace('/ws/converter', '/ws/inter/' + ticket)]);
+    }
+
+    function TaskWatcher(url) {
         this.url = url;
-        this.ticket = ticket;
 
         var _listeners = {};
         var _ws = null;
@@ -94,26 +97,22 @@
         };
 
         this.emit = function (evt, args) {
-            $.each(_listeners[evt] || [], function (i, cb) {
-                cb.apply(null, args);
-            });
+            _ws.send(JSON.stringify([evt, [].slice.apply(arguments, [1])]));
         };
 
-        this.send = function (msg) {
-            _ws.send(msg);
-        };
+        this.connect = function () {
+            var self = this;
 
-        this.connect = function (ticket) {
-            ticket = ticket || this.ticket;
-
-            _ws = new WebSocket(url);
+            _ws = new WebSocket(this.url);
             _ws.addEventListener('open', function () {
-                _ws.send(ticket);
+                self.emit('user_ready');
             });
             _ws.addEventListener('message', function (e) {
                 var data = JSON.parse(e.data);
-
-                self.emit(data[0], data.slice(1));
+                
+                $.each(_listeners[data[0]] || [], function (i, cb) {
+                    cb.apply(null, data[1]);
+                });
             });
         };
 
@@ -121,4 +120,5 @@
     }
 
     window.Converter = Converter;
+    window.TaskWatcher = TaskWatcher;
 })(jQuery);
