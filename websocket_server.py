@@ -83,11 +83,13 @@ class WatchHandler(websocket.WebSocketHandler):
     _task_id = None
 
     def check_origin(self, origin):
-        return origin.startswith('http://localhost:')
+        return True
 
     @gen.coroutine
     def open(self, task):
         self._task_id = int(task)
+
+        yield subscribe_task(self._task_id, self._process_message)
 
         # Deliver all stored log entries.
         log_name = 'task_' + task + '_log'
@@ -95,8 +97,6 @@ class WatchHandler(websocket.WebSocketHandler):
 
         for entry in log_entries:
             self.write_message(entry)
-
-        yield subscribe_task(self._task_id, self._process_message)
 
     def on_message(self, msg):
         pass

@@ -1,7 +1,9 @@
 Flask==0.10.1
 Flask-SQLAlchemy==2.0
-Flask-uWSGI-WebSocket==0.2.5
-Jinja2==2.7.3
 SQLAlchemy==0.9.7
+redis==2.10.3
+requests==2.4.3
 semantic-version==2.3.1
 six==1.8.0
+tornado==4.0.2
+tornado-redis==2.4.18

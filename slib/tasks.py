@@ -144,7 +144,7 @@ class Task(object):
             # Store all log messages.
             r.rpush('task_' + self._str_id + '_log', data)
 
-    def wait_for_user(self, timeout=10):
+    def wait_for_user(self, timeout=30):
         self.consume('user_ready', timeout)
 
     def save_result(self, data):
