@@ -121,28 +121,31 @@ class Task(object):
 
         self.on(name, wrapper)
 
-    def consume(self, name):
+    def consume(self, name, timeout=3600):
         r = None
 
         def wrapper(*data):
             nonlocal r
             r = data
 
-        self.once(name, wrapper)
-        while r is None:
+        self.on(name, wrapper)
+        start = time.time()
+        while r is None and (time.time() - start) < timeout:
             time.sleep(0.2)
 
+        self.off(name, wrapper)
         return r
 
-    def emit(self, name, *args):
-        r.publish('task_' + self._str_id, json.dumps((name, args)))
+    def emit(self, name, *args, log=True):
+        data = json.dumps((name, args))
+        r.publish('task_' + self._str_id, data)
 
-        if name == 'log_message':
+        if log:
             # Store all log messages.
-            r.rpush('task_' + self._str_id + '_log', args[0])
+            r.rpush('task_' + self._str_id + '_log', data)
 
-    def wait_for_user(self):
-        self.consume('user_ready')
+    def wait_for_user(self, timeout=10):
+        self.consume('user_ready', timeout)
 
     def save_result(self, data):
         r.hset('task_result', self._str_id, json.dumps(data))
@@ -266,7 +269,7 @@ class ConverterTask(Task):
         now = time.time()
 
         if now - self.lu > 0.3:
-            self.emit('progress', prog, text)
+            self.emit('progress', prog, text, log=False)
             self.lu = now
 
     def p_wrap(self, cb):
@@ -276,7 +279,7 @@ class ConverterTask(Task):
 
     def ws_keep_alive(self):
         # Make sure the WebSocket connection stays alive.
-        self.emit('keep_alive')
+        self.emit('keep_alive', log=False)
         qt.QtCore.QTimer.singleShot(1000, self.ws_keep_alive)
 
     def ask_user(self, img_url):
@@ -288,7 +291,7 @@ class ConverterTask(Task):
                 _result = code
 
             self.once('captcha_response', cb)
-            self.emit('captcha', img_url)
+            self.emit('captcha', img_url, log=False)
 
             while _result is None:
                 time.sleep(0.3)

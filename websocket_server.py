@@ -23,15 +23,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'knossos'))
 
 import tornadoredis
 from tornado import ioloop, web, websocket, gen
-from tornado.options import options, define, parse_config_file
 import json
 
+from slib.central import app, r
 from slib.util import parse_redis_url
 
-define('REDIS')
-define('WS_LISTEN', type=tuple)
-
-redis = None
 redis_sub = None
 watchers = {}
 
@@ -95,11 +91,10 @@ class WatchHandler(websocket.WebSocketHandler):
 
         # Deliver all stored log entries.
         log_name = 'task_' + task + '_log'
-        log_len = yield gen.Task(redis.llen, log_name)
-        log_entries = yield gen.Task(redis.lrange, log_name, 0, log_len)
+        log_entries = r.lrange(log_name, 0, r.llen(log_name))
 
         for entry in log_entries:
-            self.write_message(json.dumps(('log_message', (entry,))))
+            self.write_message(entry)
 
         yield subscribe_task(self._task_id, self._process_message)
 
@@ -127,18 +122,15 @@ class InteractiveHandler(WatchHandler):
             logging.exception('Received invalid JSON!')
             return
 
-        redis.publish('task_' + str(self._task_id) + '_input', msg)
+        r.publish('task_' + str(self._task_id) + '_input', msg)
 
 
 if __name__ == '__main__':
-    parse_config_file('./conf/settings.py')
-
-    redis = tornadoredis.Client(**parse_redis_url(options.REDIS))
-    redis_sub = tornadoredis.Client(**parse_redis_url(options.REDIS))
+    redis_sub = tornadoredis.Client(**parse_redis_url(app.config['REDIS']))
     application = web.Application([
         (r'/ws/watcher/(\d+)', WatchHandler),
         (r'/ws/inter/(\d+)', InteractiveHandler)
     ])
     
-    application.listen(options.WS_LISTEN[1], options.WS_LISTEN[0])
+    application.listen(app.config['WS_LISTEN'][1], app.config['WS_LISTEN'][0])
     ioloop.IOLoop.instance().start()
