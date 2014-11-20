@@ -170,10 +170,12 @@ class Task(object):
     def has_result(self):
         return r.hexists('task_result', self._str_id)
 
-    # TODO: This could be implemented better.
     def get_result(self, block=True):
-        while self.get_status(True)['state'] != 'DONE':
-            time.sleep(0.3)
+        if block:
+            while not self.has_result():
+                time.sleep(0.3)
+        elif not self.has_result():
+            return None
 
         return json.loads(r.hget('task_result', self._str_id).decode('utf8'))
 
