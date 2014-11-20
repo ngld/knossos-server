@@ -81,6 +81,7 @@ def unsubscribe_task(task, cb):
 
 class WatchHandler(websocket.WebSocketHandler):
     _task_id = None
+    _pinger = None
 
     def check_origin(self, origin):
         return True
@@ -88,6 +89,8 @@ class WatchHandler(websocket.WebSocketHandler):
     @gen.coroutine
     def open(self, task):
         self._task_id = int(task)
+        self._pinger = ioloop.PeriodicCallback(self.ping, 5000)
+        self._pinger.start()
 
         # Deliver all stored log entries.
         log_name = 'task_' + task + '_log'
@@ -103,6 +106,7 @@ class WatchHandler(websocket.WebSocketHandler):
 
     @gen.coroutine
     def on_close(self):
+        self._pinger.stop()
         yield unsubscribe_task(self._task_id, self._process_message)
 
     def _process_message(self, msg):

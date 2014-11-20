@@ -274,7 +274,7 @@ class ConverterTask(Task):
 
     def p_wrap(self, cb):
         progress.set_callback(self.p_update)
-        self.ws_keep_alive()
+        #self.ws_keep_alive()
         cb()
 
     def ws_keep_alive(self):
