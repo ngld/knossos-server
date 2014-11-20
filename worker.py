@@ -26,6 +26,8 @@ from slib import tasks
 
 if __name__ == '__main__':
     w = tasks.Worker()
-    w.register_task(tasks.ConverterTask)
-    w.register_task(tasks.CleanupTask)
+    for name in dir(tasks):
+        if name.endswith('Task') and name != 'Task':
+            w.register_task(getattr(tasks, name))
+    
     w.run()

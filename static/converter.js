@@ -38,51 +38,58 @@
                 prg_bar.addClass('progress-bar-danger');
             }
         });
-        this.on('captcha', function (image) {
-            var win = $('<div>');
-            win.css({
-                position: 'fixed',
-                top: '50%',
-                left: '50%',
-                'min-width': 400,
-                background: 'white',
-                border: '1px solid black',
-                padding: '5px'
-            });
 
-            var form = $('<form>').appendTo(win);
-            var img_el = $('<img>').attr('src', image);
-            var input = $('<input type="text" class="form-control">');
-
-            form.html('Please solve this captcha:<br>');
-            form.append(img_el).append('<br>');
-            form.append(input).append('<br><button type="submit" class="btn btn-primary">Send</button>');
-
-            img_el.load(function () {
+        if(this.inter) {
+            this.on('captcha', function (image) {
+                var win = $('<div>');
                 win.css({
-                    'margin-top': - (win.height() / 2),
-                    'margin-left': - (win.width() / 2)
+                    position: 'fixed',
+                    top: '50%',
+                    left: '50%',
+                    'min-width': 400,
+                    background: 'white',
+                    border: '1px solid black',
+                    padding: '5px'
                 });
-            });
 
-            form.submit(function (e) {
-                e.preventDefault();
-                self.emit('captcha_response', input.val());
-                win.remove();
-            });
+                var form = $('<form>').appendTo(win);
+                var img_el = $('<img>').attr('src', image);
+                var input = $('<input type="text" class="form-control">');
 
-            $('body').append(win);
-        })
+                form.html('Please solve this captcha:<br>');
+                form.append(img_el).append('<br>');
+                form.append(input).append('<br><button type="submit" class="btn btn-primary">Send</button>');
+
+                img_el.load(function () {
+                    win.css({
+                        'margin-top': - (win.height() / 2),
+                        'margin-left': - (win.width() / 2)
+                    });
+                });
+
+                form.submit(function (e) {
+                    e.preventDefault();
+                    self.emit('captcha_response', input.val());
+                    win.remove();
+                });
+
+                $('body').append(win);
+            });
+        }
 
         log_display.height($(window).height() - log_display.offset().top - 50);
     }
 
-    function Converter(url, ticket) {
-        TaskWatcher.apply(this, [url.replace('/ws/converter', '/ws/inter/' + ticket)]);
-    }
+    function TaskWatcher(server, ticket, interactive) {
+        if(server.substr(-1) != '/') server += '/';
 
-    function TaskWatcher(url) {
-        this.url = url;
+        if(interactive) {
+            server += 'ws/inter/' + ticket;
+        } else {
+            server += 'ws/watcher/' + ticket;
+        }
+        this.url = server;
+        this.inter = interactive;
 
         var _listeners = {};
         var _ws = null;
@@ -97,6 +104,10 @@
         };
 
         this.emit = function (evt, args) {
+            if(!this.inter) {
+                throw new Error("You can't send on a read-only connection!");
+            }
+
             _ws.send(JSON.stringify([evt, [].slice.apply(arguments, [1])]));
         };
 
@@ -104,9 +115,12 @@
             var self = this;
 
             _ws = new WebSocket(this.url);
-            _ws.addEventListener('open', function () {
-                self.emit('user_ready');
-            });
+            if(this.inter) {
+                _ws.addEventListener('open', function () {
+                    self.emit('user_ready');
+                });
+            }
+            
             _ws.addEventListener('message', function (e) {
                 var data = JSON.parse(e.data);
                 
@@ -117,6 +131,11 @@
         };
 
         this.bootstrap_ui = bootstrap_ui;
+    }
+
+    // backwards compatibility
+    function Converter(url, ticket) {
+        TaskWatcher.apply(this, [url.replace('/ws/converter', ''), ticket, true]);
     }
 
     window.Converter = Converter;

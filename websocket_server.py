@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'knossos'))
 
 import tornadoredis
 from tornado import ioloop, web, websocket, gen
-import json
+from flask import json
 
 from slib.central import app, r
 from slib.util import parse_redis_url
@@ -64,7 +64,7 @@ def subscribe_task(task, cb):
         watchers[task].append(cb)
 
     if len(watchers) == 1:
-        logging.info('Listening to Redis...')
+        logging.debug('Starting Redis listener...')
         redis_sub.listen(redis_listener)
 
 
@@ -134,4 +134,9 @@ if __name__ == '__main__':
     ])
     
     application.listen(app.config['WS_LISTEN'][1], app.config['WS_LISTEN'][0])
-    ioloop.IOLoop.instance().start()
+
+    logging.info('Ready.')
+    try:
+        ioloop.IOLoop.instance().start()
+    except KeyboardInterrupt:
+        logging.info('Shutting down...')

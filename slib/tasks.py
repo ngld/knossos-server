@@ -26,8 +26,8 @@ from .central import r, app
 from .output import TaskLogHandler, MessagesFormatter
 
 os.environ['QT_API'] = 'headless'
-from knossos import progress, util, qt
-from converter import download
+from knossos import progress, util
+import converter
 
 
 class Task(object):
@@ -68,10 +68,9 @@ class Task(object):
             self._teardown()
 
     def _setup(self):
-        p = r.pubsub()
-        p.subscribe(**{'task_' + self._str_id + '_input': self._handle_message, 'ignore_subscribe_messages': True})
-        self._p = p
-        self._p_thread = p.run_in_thread(sleep_time=0.1)
+        self._p = r.pubsub()
+        self._p.subscribe(**{'task_' + self._str_id + '_input': self._handle_message, 'ignore_subscribe_messages': True})
+        self._p_thread = self._p.run_in_thread(sleep_time=0.3)
 
         self._h = TaskLogHandler(self, logging.INFO)
         self._h.setFormatter(MessagesFormatter('%(levelname)s: %(message)s'))
@@ -196,11 +195,21 @@ class Worker(object):
         self._tasks[cls.__name__] = cls
 
     def run(self):
+        import signal
+
+        signal.signal(signal.SIGINT, self.sig_quit)
+
         self._running = True
+        logging.info('Registered tasks: %s', ', '.join(self._tasks.keys()))
+        logging.info('Ready and waiting for tasks.')
+
         while self._running:
-            task = r.blpop('task_queue')[1].decode('utf8', 'replace')
+            task = r.blpop('task_queue', timeout=5)
+            if not task:
+                continue
+
             try:
-                task = json.loads(task)
+                task = json.loads(task[1].decode('utf8', 'replace'))
             except ValueError:
                 logging.exception('Invalid JSON in task queue!')
                 continue
@@ -209,8 +218,18 @@ class Worker(object):
                 logging.error('Unknown task type "%s"!', task[1])
                 continue
 
+            logging.info('Running task #%d of type %s...', task[0], task[1])
+
             task = self._tasks[task[1]](*task[2], id_=task[0])
             task._run_task()
+
+            logging.info('Task finished!')
+
+        logging.info('Quitting...')
+
+    def sig_quit(self, a, b):
+        logging.info('I will shut down once the running task is finished!')
+        self.quit()
 
     def quit(self):
         self._running = False
@@ -276,13 +295,7 @@ class ConverterTask(Task):
 
     def p_wrap(self, cb):
         progress.set_callback(self.p_update)
-        #self.ws_keep_alive()
         cb()
-
-    def ws_keep_alive(self):
-        # Make sure the WebSocket connection stays alive.
-        self.emit('keep_alive', log=False)
-        qt.QtCore.QTimer.singleShot(1000, self.ws_keep_alive)
 
     def ask_user(self, img_url):
         with self._captcha_lock:
@@ -305,7 +318,7 @@ class ConverterTask(Task):
         dl_path = None
         dl_link = None
         self._captcha_lock = Lock()
-        download.ASK_USER = self.ask_user
+        converter.download.ASK_USER = self.ask_user
         self.wait_for_user()
 
         try:
@@ -338,8 +351,6 @@ class ConverterTask(Task):
                 try:
                     with open(repo, 'w') as stream:
                         stream.write(json.dumps(self._args[0]))
-
-                    import converter
 
                     result = converter.generate_checksums(repo, output, self.p_wrap, dl_path, dl_link)
 
@@ -388,4 +399,4 @@ class ConverterTask(Task):
 
                 self.emit('done', result)
         finally:
-            download.ASK_USER = None
+            converter.download.ASK_USER = None
