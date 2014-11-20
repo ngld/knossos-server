@@ -89,14 +89,14 @@ class WatchHandler(websocket.WebSocketHandler):
     def open(self, task):
         self._task_id = int(task)
 
-        yield subscribe_task(self._task_id, self._process_message)
-
         # Deliver all stored log entries.
         log_name = 'task_' + task + '_log'
         log_entries = r.lrange(log_name, 0, r.llen(log_name))
 
         for entry in log_entries:
             self.write_message(entry)
+
+        yield subscribe_task(self._task_id, self._process_message)
 
     def on_message(self, msg):
         pass
@@ -107,9 +107,6 @@ class WatchHandler(websocket.WebSocketHandler):
 
     def _process_message(self, msg):
         self.write_message(json.dumps(msg))
-
-        if msg[0] == 'done':
-            self.close()
 
 
 class InteractiveHandler(WatchHandler):
