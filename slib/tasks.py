@@ -28,6 +28,7 @@ from .output import TaskLogHandler, MessagesFormatter
 os.environ['QT_API'] = 'headless'
 from knossos import progress, util
 import converter
+import converter.download
 
 
 class Task(object):
@@ -162,7 +163,9 @@ class Task(object):
 
     def get_status(self, update=False):
         if self._status is None or update:
-            self._status = json.loads(r.hget('task_status', self._str_id).decode('utf8'))
+            data = r.hget('task_status', self._str_id)
+            if data is not None:
+                self._status = json.loads(data.decode('utf8'))
 
         return self._status
 

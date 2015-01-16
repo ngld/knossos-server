@@ -17,6 +17,7 @@ from __future__ import absolute_import, print_function
 import logging
 import sys
 import os
+import functools
 
 logging.basicConfig(level=logging.DEBUG, format='[%(asctime)s@%(module)s] %(funcName)s %(levelname)s: %(message)s')
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'knossos'))
@@ -89,7 +90,7 @@ class WatchHandler(websocket.WebSocketHandler):
     @gen.coroutine
     def open(self, task):
         self._task_id = int(task)
-        self._pinger = ioloop.PeriodicCallback(self.ping, 5000)
+        self._pinger = ioloop.PeriodicCallback(functools.partial(self.ping, b' '), 5000)
         self._pinger.start()
 
         # Deliver all stored log entries.

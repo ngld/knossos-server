@@ -15,7 +15,6 @@
 import json
 import logging
 import functools
-import random
 
 
 class MessagesFormatter(logging.Formatter):
@@ -37,6 +36,9 @@ class MessagesFormatter(logging.Formatter):
         if self.usesTime():
             record.asctime = self.formatTime(record, self.datefmt)
         s = self.formatMessage(record)
+        if record.exc_info is not None:
+            s += ' (' + str(record.exc_info[1]) + ')'
+        
         return s
 
 
