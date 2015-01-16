@@ -3,3 +3,4 @@
 build
 py-env
 __pycache__
+conf/settings.py

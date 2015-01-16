@@ -37,7 +37,9 @@ class MessagesFormatter(logging.Formatter):
             record.asctime = self.formatTime(record, self.datefmt)
         s = self.formatMessage(record)
         if record.exc_info is not None:
-            s += ' (' + str(record.exc_info[1]) + ')'
+            exc_msg = str(record.exc_info[1])
+            if exc_msg != record.message:
+                s += ' (' + exc_msg + ')'
         
         return s
 
