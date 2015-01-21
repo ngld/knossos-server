@@ -44,27 +44,6 @@ class MessagesFormatter(logging.Formatter):
         return s
 
 
-class WebSocketHandler(logging.Handler):
-    socket = None
-
-    def __init__(self, socket, level=logging.NOTSET):
-        super(WebSocketHandler, self).__init__(level)
-
-        self.socket = socket
-
-    def emit(self, record):
-        try:
-            fr = self.format(record)
-            self.send(fr)
-        except:
-            self.handleError(record)
-
-    def send(self, data):
-        data = ('log_message', data)
-        data = json.dumps(data)
-        self.socket.send(data)
-
-
 class TaskLogHandler(logging.Handler):
     task = None
 
@@ -82,22 +61,3 @@ class TaskLogHandler(logging.Handler):
 
     def send(self, data):
         self.task.emit('log_message', data)
-
-
-def ws_logging(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s'):
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(ws):
-            h = WebSocketHandler(ws, level)
-            h.setFormatter(MessagesFormatter(format))
-            l = logging.getLogger()
-            l.addHandler(h)
-
-            try:
-                func(ws)
-            finally:
-                l.removeHandler(h)
-
-        return wrapper
-
-    return decorator
