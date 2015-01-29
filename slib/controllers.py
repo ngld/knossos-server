@@ -50,6 +50,11 @@ def conv_request():
         data = json.loads(data)
     except ValueError:
         logging.exception('Received invalid JSON in converter request!')
+        return jsonify(
+            ticket=None,
+            token=None,
+            error=True
+        )
 
     task_id = tasks.ConverterTask(data, webhook, token).run_async()
 
