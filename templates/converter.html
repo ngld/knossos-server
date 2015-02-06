@@ -72,7 +72,7 @@
             }
 
             function show_progress() {
-                var url = location.href.replace(/^https?:\/\/([^\/]+)\/.*$/, 'ws://$1/').replace(':8080', ':8085');
+                var url = location.href.replace(/^http(s?):\/\/([^\/]+)\/.*$/, 'ws$1://$2/').replace(':8080', ':8085');
                 ws = new Converter(url + 'ws/converter', ticket.ticket);
                 ws.on('done', function (success) {
                     if(success) {

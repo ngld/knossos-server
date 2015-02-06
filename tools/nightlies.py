@@ -21,7 +21,9 @@ import argparse
 import logging
 import json
 import re
+import copy
 import requests
+
 
 logging.basicConfig(level=logging.DEBUG, format='[%(asctime)s@%(module)s] %(funcName)s %(levelname)s: %(message)s')
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'knossos'))
@@ -107,7 +109,6 @@ def add_nightly(link, rev, os_name, info):
         logging.warning('Unknown OS %s!', os_name)
         return
 
-    rev = '0.0.' + rev
     page = sess.get(link)
     dl_link = re.search(r'Group: Standard<br/><a href="(http://[^"]+)"', page.text)
     if not dl_link:
@@ -115,7 +116,7 @@ def add_nightly(link, rev, os_name, info):
         return
 
     dl_link = dl_link.group(1)
-    pkg = PKG_TPL.copy()
+    pkg = copy.deepcopy(PKG_TPL)
     pkg['files'] = [{
         'filename': os.path.basename(dl_link),
         'is_archive': True,
@@ -309,8 +310,9 @@ def fetch_nightlies(json_file):
     nlist = sess.get(LIST_PAGE)
 
     for m in re.finditer(r'<a href="([^"]+)">Nightly \(([^\)]+)\): [0-9]+ [A-Za-z]+ [0-9]+ - Revision ([0-9]+)</a>', nlist.text):
-        if '0.0.' + m.group(3) in old_revs:
-            info = old_revs['0.0.' + m.group(3)]
+        rev = '0.0.' + m.group(3)
+        if rev in old_revs:
+            info = old_revs[rev]
             if m.group(2) == 'Windows' and info['has_windows']:
                 continue
             elif m.group(2) == 'Linux' and info['has_linux']:
@@ -318,11 +320,11 @@ def fetch_nightlies(json_file):
             elif m.group(2) == 'OS X' and info['has_macos']:
                 continue
         else:
-            mod = MOD_TPL.copy()
-            mod['version'] = '0.0.' + m.group(3)
+            mod = copy.deepcopy(MOD_TPL)
+            mod['version'] = rev
             repo['mods'].append(mod)
-
-            info = old_revs[mod['version']] = {
+            
+            info = old_revs[rev] = {
                 'mod': mod,
                 'has_macos': False,
                 'has_linux': False,
@@ -330,7 +332,7 @@ def fetch_nightlies(json_file):
                 'has_windows': False
             }
 
-        add_nightly(m.group(1), m.group(3), m.group(2), info)
+        add_nightly(m.group(1), rev, m.group(2), info)
 
     nlist = sess.get(LIN64_LIST)
 
@@ -349,7 +351,7 @@ def fetch_nightlies(json_file):
             if info['has_linux64']:
                 continue
         else:
-            mod = MOD_TPL.copy()
+            mod = copy.deepcopy(MOD_TPL)
             mod['version'] = rev
             repo['mods'].append(mod)
 
@@ -369,7 +371,7 @@ def fetch_nightlies(json_file):
         dl_link = dl_link.group(1)
         info['has_linux64'] = True
 
-        pkg = PKG_TPL.copy()
+        pkg = copy.deepcopy(PKG_TPL)
         pkg['files'] = [{
             'filename': os.path.basename(dl_link),
             'is_archive': True,
