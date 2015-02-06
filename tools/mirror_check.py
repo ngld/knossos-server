@@ -19,7 +19,7 @@ import sys
 import os
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(threadName)s:%(module)s.%(funcName)s: %(message)s')
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'knossos'))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'knossos'))
 
 import argparse
 import json

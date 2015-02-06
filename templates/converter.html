@@ -60,6 +60,11 @@
                     },
 
                     success: function (res) {
+                        if(res.error) {
+                            alert("You submitted invalid data! Please try again.");
+                            return;
+                        }
+                        
                         ticket = res;
                         show_progress();
                     }
