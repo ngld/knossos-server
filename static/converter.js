@@ -83,6 +83,10 @@
     function TaskWatcher(server, ticket, interactive) {
         if(server.substr(-1) != '/') server += '/';
 
+        if(server == 'ws://localhost:8080/') {
+            server = 'ws://localhost:8085/';
+        }
+
         if(interactive) {
             server += 'ws/inter/' + ticket;
         } else {

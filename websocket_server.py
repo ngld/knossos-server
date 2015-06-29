@@ -51,6 +51,9 @@ def redis_listener(msg):
         # Disconnected from the server.
         # TODO: Should we try to reconnect?
         logging.error('Disconnected from Redis!')
+    elif msg.kind == 'unsubscribe' and msg.channel in watchers:
+        logging.warn('We unsubscribed from %s but we still have watchers!! Resubscribing...', msg.channel)
+        redis_sub.subscribe(msg.channel)
 
 
 @gen.coroutine
@@ -61,12 +64,11 @@ def subscribe_task(task, cb):
     if task not in watchers:
         watchers[task] = [cb]
         yield gen.Task(redis_sub.subscribe, task)
-    else:
-        watchers[task].append(cb)
 
-    if len(watchers) == 1:
         logging.debug('Starting Redis listener...')
         redis_sub.listen(redis_listener)
+    else:
+        watchers[task].append(cb)
 
 
 @gen.coroutine
@@ -93,6 +95,12 @@ class WatchHandler(websocket.WebSocketHandler):
         self._pinger = ioloop.PeriodicCallback(functools.partial(self.ping, b' '), 5000)
         self._pinger.start()
 
+        if not r.hexists('task_status', self._task_id):
+            self.write_message(('task_status', 'missing'))
+            return
+
+        yield subscribe_task(self._task_id, self._process_message)
+
         # Deliver all stored log entries.
         log_name = 'task_' + task + '_log'
         log_entries = r.lrange(log_name, 0, r.llen(log_name))
@@ -100,7 +108,9 @@ class WatchHandler(websocket.WebSocketHandler):
         for entry in log_entries:
             self.write_message(entry)
 
-        yield subscribe_task(self._task_id, self._process_message)
+        vlog_name = 'task_' + task + '_vlog'
+        for key in r.hkeys(vlog_name):
+            self.write_message(r.hget(vlog_name, key))
 
     def on_message(self, msg):
         pass

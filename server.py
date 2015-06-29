@@ -26,5 +26,5 @@ from slib import controllers
 
 
 if __name__ == '__main__':
-    listen = app.config.API_LISTEN
+    listen = app.config['API_LISTEN']
     app.run(listen[0], listen[1])

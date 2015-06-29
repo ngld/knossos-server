@@ -143,6 +143,8 @@ class Task(object):
         if log:
             # Store all log messages.
             r.rpush('task_' + self._str_id + '_log', data)
+        else:
+            r.hset('task_' + self._str_id + '_vlog', name, data)
 
     def wait_for_user(self, timeout=30):
         self.consume('user_ready', timeout)
@@ -185,6 +187,7 @@ class Task(object):
         r.hdel('task_status', self._str_id)
         r.hdel('task_result', self._str_id)
         r.delete('task_' + self._str_id + '_log')
+        r.delete('task_' + self._str_id + '_vlog')
 
 
 class Worker(object):
@@ -283,6 +286,12 @@ class CleanupTask(Task):
                 logging.debug('Removing stale log for task %s.', task)
                 r.delete('task_' + task + '_log')
 
+        for name in r.keys('task_*_vlog'):
+            task = name.decode('utf8').split('_')[1]
+            if task not in living_tasks:
+                logging.debug('Removing stale vlog for task %s.', task)
+                r.delete('task_' + task + '_vlog')
+
 
 class ConverterTask(Task):
     lu = 0
@@ -322,7 +331,6 @@ class ConverterTask(Task):
         dl_link = None
         self._captcha_lock = Lock()
         converter.download.ASK_USER = self.ask_user
-        self.wait_for_user()
 
         try:
             with tempfile.TemporaryDirectory() as tdir:
