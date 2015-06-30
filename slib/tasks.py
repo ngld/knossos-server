@@ -363,7 +363,7 @@ class ConverterTask(Task):
                     with open(repo, 'w') as stream:
                         stream.write(json.dumps(self._args[0]))
 
-                    result = converter.generate_checksums(repo, output, self.p_wrap, dl_path, dl_link)
+                    result = converter.generate_checksums(repo, output, self.p_wrap, dl_path, dl_link, list_files=True)
 
                     # Clear the cache to prevent a memory leak.
                     util.HASH_CACHE = {}

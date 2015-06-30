@@ -32,7 +32,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'knossos'))
 LIST_PAGE = 'http://www.hard-light.net/forums/index.php?board=173.0'
 LIN64_LIST = 'https://build.tproxy.de/builders/fs2-trunk-linux'
 LIN64_API = 'https://build.tproxy.de/json/builders/fs2-trunk-linux/builds/%s'
-FS2_VER = '3.7.1'
 sess = requests.Session()
 
 MOD_TPL = {
@@ -44,8 +43,7 @@ MOD_TPL = {
     'notes': '',
     'folder': 'FSO_nightly',
     'packages': [],
-    # version
-    "actions": []
+    'actions': []
 }
 
 PKG_TPL = {
@@ -138,8 +136,6 @@ def add_nightly(link, rev, os_name, info):
     version = info['mod']['version']
 
     if os_name == 'Windows':
-        fs2_file = os.path.basename(dl_link).replace('fso_Standard', 'fs2_open_' + FS2_VER.replace('.', '_'))
-
         info['has_windows'] = True
         pkg['name'] = 'Windows'
         pkg['environment'] = [
@@ -152,18 +148,6 @@ def add_nightly(link, rev, os_name, info):
                 'value': 'sse2'
             }
         ]
-        # pkg['executables'] = [
-        #     {
-        #         'version': version,
-        #         'file': fs2_file,
-        #         'debug': False
-        #     },
-        #     {
-        #         'version': version,
-        #         'file': fs2_file.replace('.exe', '-DEBUG.exe'),
-        #         'debug': True
-        #     }
-        # ]
         info['mod']['packages'].append(pkg)
 
         no_sse_link = re.search(r'Group: NO-SSE<br/><a href="(http://[^"]+)"', page.text)
@@ -171,7 +155,6 @@ def add_nightly(link, rev, os_name, info):
             logging.error('Failed to find the no-sse download link for "%s %s"!', rev, os_name)
         else:
             no_sse_link = no_sse_link.group(1)
-            fs2_file = os.path.basename(no_sse_link).replace('fso_NO-SSE', 'fs2_open_' + FS2_VER.replace('.', '_') + '_NO-SSE')
             pkg = PKG_TPL.copy()
             pkg['files'] = [{
                 'filename': os.path.basename(no_sse_link),
@@ -188,18 +171,6 @@ def add_nightly(link, rev, os_name, info):
                     'value': 'windows'
                 }
             ]
-            # pkg['executables'] = [
-            #     {
-            #         'version': version + '+NO-SSE',
-            #         'file': fs2_file,
-            #         'debug': False
-            #     },
-            #     {
-            #         'version': version + '+NO-SSE',
-            #         'file': fs2_file.replace('.exe', '-DEBUG.exe'),
-            #         'debug': True
-            #     }
-            # ]
             info['mod']['packages'].append(pkg)
 
         sse_link = re.search(r'Group: SSE<br/><a href="(http://[^"]+)"', page.text)
@@ -208,7 +179,6 @@ def add_nightly(link, rev, os_name, info):
             return
         else:
             sse_link = sse_link.group(1)
-            fs2_file = os.path.basename(sse_link).replace('fso_SSE', 'fs2_open_' + FS2_VER.replace('.', '_') + '_SSE')
             pkg = PKG_TPL.copy()
             pkg['files'] = [{
                 'filename': os.path.basename(sse_link),
@@ -229,21 +199,8 @@ def add_nightly(link, rev, os_name, info):
                     'value': 'sse'
                 }
             ]
-            # pkg['executables'] = [
-            #     {
-            #         'version': version + '+SSE',
-            #         'file': fs2_file,
-            #         'debug': False
-            #     },
-            #     {
-            #         'version': version + '+SSE',
-            #         'file': fs2_file.replace('.exe', '-DEBUG.exe'),
-            #         'debug': True
-            #     }
-            # ]
             info['mod']['packages'].append(pkg)
     elif os_name == 'Linux':
-        fs2_file = os.path.basename(dl_link).replace('fso_Standard', 'fs2_open_' + FS2_VER)
         info['has_linux'] = True
         pkg['name'] = 'Linux'
         pkg['environment'] = [
@@ -256,21 +213,8 @@ def add_nightly(link, rev, os_name, info):
                 'value': 'x86_32'
             }
         ]
-        # pkg['executables'] = [
-        #     {
-        #         'version': version,
-        #         'file': fs2_file,
-        #         'debug': False
-        #     },
-        #     {
-        #         'version': version,
-        #         'file': fs2_file + '-DEBUG',
-        #         'debug': True
-        #     }
-        # ]
         info['mod']['packages'].append(pkg)
     elif os_name == 'OS X':
-        # fs2_file = os.path.basename(dl_link).replace('fso_Standard', 'fs2_open_' + FS2_VER).replace('.tgz', '')
         info['has_macos'] = True
         pkg['name'] = 'Mac OS X'
         pkg['environment'] = [
@@ -279,18 +223,6 @@ def add_nightly(link, rev, os_name, info):
                 'value': 'macos'
             }
         ]
-        # pkg['executables'] = [
-        #     {
-        #         'version': version,
-        #         'file': fs2_file + '.app/Contents/MacOS/FS2_Open ' + FS2_VER,
-        #         'debug': False
-        #     },
-        #     {
-        #         'version': version,
-        #         'file': fs2_file + ' (debug).app/Contents/MacOS/FS2_Open ' + FS2_VER + ' (debug)',
-        #         'debug': True
-        #     }
-        # ]
         info['mod']['packages'].append(pkg)
 
 
@@ -355,12 +287,6 @@ def fetch_nightlies(json_file):
                 'has_windows': False
             }
 
-        hass = []
-        for os_name in ('macos', 'linux', 'linux64', 'windows'):
-            if info['has_' + os_name]:
-                hass.append(os_name)
-
-        logging.info('Fetching %s info for %s which already has %s.', m.group(2), rev, ', '.join(hass))
         add_nightly(m.group(1), rev, m.group(2), info)
 
     nlist = sess.get(LIN64_LIST)
@@ -425,18 +351,6 @@ def fetch_nightlies(json_file):
                 'value': 'x86_64'
             }
         ]
-        # pkg['executables'] = [
-        #     {
-        #         'version': version,
-        #         'file': 'fs2_open_' + FS2_VER,
-        #         'debug': False
-        #     },
-        #     {
-        #         'version': version,
-        #         'file': 'fs2_open_' + FS2_VER + '-DEBUG',
-        #         'debug': True
-        #     }
-        # ]
         info['mod']['packages'].append(pkg)
 
     with open(json_file, 'w') as stream:

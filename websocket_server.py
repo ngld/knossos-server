@@ -52,23 +52,25 @@ def redis_listener(msg):
         # TODO: Should we try to reconnect?
         logging.error('Disconnected from Redis!')
     elif msg.kind == 'unsubscribe' and msg.channel in watchers:
-        logging.warn('We unsubscribed from %s but we still have watchers!! Resubscribing...', msg.channel)
-        redis_sub.subscribe(msg.channel)
+        logging.warn('We unsubscribed from %s but we still have watchers!!', msg.channel)
 
 
 @gen.coroutine
 def subscribe_task(task, cb):
     global watchers
     task = 'task_' + str(task)
+    need_sub = not redis_sub.subscribed
 
     if task not in watchers:
         watchers[task] = [cb]
         yield gen.Task(redis_sub.subscribe, task)
-
-        logging.debug('Starting Redis listener...')
-        redis_sub.listen(redis_listener)
     else:
         watchers[task].append(cb)
+
+    if need_sub:
+        logging.debug('Starting Redis listener...')
+        redis_sub.listen(redis_listener)
+        logging.debug('Lets go on...')
 
 
 @gen.coroutine
