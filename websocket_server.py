@@ -98,7 +98,8 @@ class WatchHandler(websocket.WebSocketHandler):
         self._pinger.start()
 
         if not r.hexists('task_status', self._task_id):
-            self.write_message(('task_status', 'missing'))
+            self._process_message(('task_status', ('missing',)))
+            self._log('The requested task is missing!')
             return
 
         yield subscribe_task(self._task_id, self._process_message)
@@ -114,6 +115,15 @@ class WatchHandler(websocket.WebSocketHandler):
         for key in r.hkeys(vlog_name):
             self.write_message(r.hget(vlog_name, key))
 
+        if len(log_entries) == 0:
+            try:
+                status = json.loads(r.hget('task_status', self._task_id))
+            except:
+                logging.exception('Failed to load status for task #%d.' % self._task_id)
+            else:
+                if status['state'] == 'WAITING':
+                    self._log('The task is queued, please wait...')
+
     def on_message(self, msg):
         pass
 
@@ -121,6 +131,9 @@ class WatchHandler(websocket.WebSocketHandler):
     def on_close(self):
         self._pinger.stop()
         yield unsubscribe_task(self._task_id, self._process_message)
+
+    def _log(self, msg):
+        self._process_message(('log_message', (msg,)))
 
     def _process_message(self, msg):
         self.write_message(json.dumps(msg))
