@@ -5,7 +5,9 @@ quit() {
 
 trap quit INT
 
-source py-env/bin/activate
+if [ -d py-env ]; then
+    source py-env/bin/activate
+fi
 
 python server.py &
 server=$!

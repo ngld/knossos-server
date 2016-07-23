@@ -1,12 +1,25 @@
-SQLALCHEMY_DATABASE_URI = 'sqlite:///./test.db'
+# This is a list of accepted keys. You can list as many as you want here.
+# Every application which wants to use this server needs one key.
 API_KEYS = ('<secret>',)
+
+## If you want to automatically mirror all processed mods, you should set the following two values.
+# The directory (relative to the server.py files) where the mod files should be stored.
 MIRROR_PATH = 'dls'
+
+# The URL under which the previous directory is reachable.
 MIRROR_URL = 'http://localhost/mirror'
 
-# An explanation's here: https://github.com/andymccurdy/redis-py/blob/ecf1e134266e6c87c449df08787aad163785cc13/redis/client.py#L370-386
+# The connection information for Redis. (explained here: https://github.com/andymccurdy/redis-py/blob/ecf1e134266e6c87c449df08787aad163785cc13/redis/client.py#L370-386)
 REDIS = 'redis://localhost:6379'
+
+# The IP and port on which the API server (server.py) should listen.
 API_LISTEN = ('localhost', 8080)
+
+# The IP and port on which the WebSocket server (websocket_server.py) should listen.
 WS_LISTEN = ('localhost', 8085)
 
+# Results older than this will be removed from Redis by the cron.py script. (The value is given in seconds)
 RESULT_LIFETIME = 10 * 60  # 10 minutes
+
+# Unfinished tasks older than this will be removed from Redis by the cron.py script. (The value is given in seconds)
 TASK_LIFETIME = 24 * 60 * 60  # 1 day

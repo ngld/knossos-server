@@ -54,8 +54,7 @@ class TaskLogHandler(logging.Handler):
 
     def emit(self, record):
         try:
-            fr = self.format(record)
-            self.send(fr)
+            self.send(self.format(record))
         except:
             self.handleError(record)
 
