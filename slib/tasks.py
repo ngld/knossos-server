@@ -339,8 +339,9 @@ class ConverterTask(Task):
             with tempfile.TemporaryDirectory() as tdir:
                 repo = os.path.join(tdir, 'repo.json')
                 output = os.path.join(tdir, 'out.json')
+                remove_prefixes = []
 
-                if app.config['MIRROR_PATH'] is not None:
+                if app.config.get('MIRROR_PATH', None) is not None:
                     info = self._args[0]
                     try:
                         if 'mods' not in info and 'title' in info and 'id' in info:
@@ -355,6 +356,7 @@ class ConverterTask(Task):
 
                         dl_link = util.pjoin(app.config['MIRROR_URL'], dl_path)
                         dl_path = os.path.join(app.config['MIRROR_PATH'], dl_path)
+                        remove_prefixes.append(app.config['MIRROR_URL'])
 
                         if not os.path.isdir(dl_path):
                             os.makedirs(dl_path)
@@ -366,7 +368,7 @@ class ConverterTask(Task):
                     with open(repo, 'w') as stream:
                         stream.write(json.dumps(self._args[0]))
 
-                    result = converter.generate_checksums(repo, output, self.p_wrap, dl_path, dl_link, list_files=True)
+                    result = converter.generate_checksums(repo, output, self.p_wrap, dl_path, dl_link, remove_prefixes=remove_prefixes)
 
                     # Clear the cache to prevent a memory leak.
                     util.HASH_CACHE = {}
