@@ -3,11 +3,11 @@
 API_KEYS = ('<secret>',)
 
 ## If you want to automatically mirror all processed mods, you should set the following two values.
-# The directory (relative to the server.py files) where the mod files should be stored.
-MIRROR_PATH = 'dls'
+# The directory where the mod files should be stored. You can use an absolute path here.
+# MIRROR_PATH = 'dls'
 
 # The URL under which the previous directory is reachable.
-MIRROR_URL = 'http://localhost/mirror'
+# MIRROR_URL = 'http://localhost/mirror'
 
 # The connection information for Redis. (explained here: https://github.com/andymccurdy/redis-py/blob/ecf1e134266e6c87c449df08787aad163785cc13/redis/client.py#L370-386)
 REDIS = 'redis://localhost:6379'
@@ -23,3 +23,13 @@ RESULT_LIFETIME = 10 * 60  # 10 minutes
 
 # Unfinished tasks older than this will be removed from Redis by the cron.py script. (The value is given in seconds)
 TASK_LIFETIME = 24 * 60 * 60  # 1 day
+
+## If you want to accept uploads, you should set the next two options.
+# The directory (inside MIRROR_PATH) where uploads will be saved.
+# UPLOAD_PATH = 'drops'
+
+# The allowed file extensions for uploads.
+# UPLOAD_EXTENSIONS = set(['7z', 'rar', 'zip', 'gz', 'xz', 'bz2'])
+
+# This sets the maximum request length which means that it also limits how big uploaded files can be.
+MAX_CONTENT_LENGTH = 1 * 1024**3  # 1 GiB
