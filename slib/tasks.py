@@ -84,8 +84,11 @@ class Task(object):
         self._p.unsubscribe('task_' + self._str_id + '_input')
 
         status = self.get_status(True)
-        now = time.time()
-        r.hset('task_status', self._str_id, json.dumps({'state': 'DONE', 'time': now, 'runtime': now - status['time']}))
+        # Check if the task still exists. In some cases the task has already been
+        # removed from Redis at this point.
+        if status:
+            now = time.time()
+            r.hset('task_status', self._str_id, json.dumps({'state': 'DONE', 'time': now, 'runtime': now - status['time']}))
 
         logging.getLogger().removeHandler(self._h)
 
