@@ -31,6 +31,7 @@
         });
         this.on('done', function (success) {
             prg_bar.removeClass('progress-bar-striped').removeClass('active');
+            prg_display.hide();
 
             if(success) {
                 prg_bar.addClass('progress-bar-success');

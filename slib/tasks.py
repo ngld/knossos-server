@@ -18,6 +18,7 @@ import time
 import logging
 import tempfile
 import re
+import shutil
 from urllib.parse import urlencode
 from urllib.request import urlopen
 from threading import Lock
@@ -332,6 +333,7 @@ class ConverterTask(Task):
     def run(self):
         dl_path = None
         dl_link = None
+        slug_path = None
         self._captcha_lock = Lock()
         converter.download.ASK_USER = self.ask_user
 
@@ -350,16 +352,17 @@ class ConverterTask(Task):
                             mods = info['mods']
 
                         if len(mods) == 1:
-                            dl_path = os.path.join(os.path.basename(mods[0]['id']), os.path.basename(mods[0]['version']))
+                            dl_slug = os.path.join(os.path.basename(mods[0]['id']), os.path.basename(mods[0]['version']))
                         else:
-                            dl_path = 'general'
+                            dl_slug = 'general'
 
-                        dl_link = util.pjoin(app.config['MIRROR_URL'], dl_path)
-                        dl_path = os.path.join(app.config['MIRROR_PATH'], dl_path)
+                        dl_link = app.config['MIRROR_URL']
+                        dl_path = app.config['MIRROR_PATH']
                         remove_prefixes.append(app.config['MIRROR_URL'])
 
-                        if not os.path.isdir(dl_path):
-                            os.makedirs(dl_path)
+                        slug_path = os.path.join(dl_path, dl_slug)
+                        if not os.path.isdir(slug_path):
+                            os.makedirs(slug_path)
                     except KeyError:
                         # We're missing some keys here, this will be logged later, too.
                         dl_path = None
@@ -368,7 +371,7 @@ class ConverterTask(Task):
                     with open(repo, 'w') as stream:
                         stream.write(json.dumps(self._args[0]))
 
-                    result = converter.generate_checksums(repo, output, self.p_wrap, dl_path, dl_link, remove_prefixes=remove_prefixes)
+                    result = converter.generate_checksums(repo, output, self.p_wrap, dl_path, dl_link, dl_slug, remove_prefixes=remove_prefixes)
 
                     # Clear the cache to prevent a memory leak.
                     util.HASH_CACHE = {}
@@ -390,6 +393,13 @@ class ConverterTask(Task):
                     result = False
 
                 if not result:
+                    if slug_path is not None:
+                        logging.info('Cleaning up...')
+                        try:
+                            shutil.rmtree(slug_path)
+                        except:
+                            logging.exception('Failed!')
+
                     self.save_result({
                         'json': None,
                         'success': False,
