@@ -25,6 +25,11 @@ from slib import tasks
 
 
 if __name__ == '__main__':
+    from knossos.util import test_7z
+
+    if not test_7z():
+        sys.exit(1)
+
     w = tasks.Worker()
     for name in dir(tasks):
         if name.endswith('Task') and name != 'Task':
