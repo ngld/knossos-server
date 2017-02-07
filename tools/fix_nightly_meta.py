@@ -37,7 +37,7 @@ def fix_mods(mods):
                     exes.append({
                         'version': mod['version'],
                         'file': item['filename'],
-                        'debug': 'debug' in item['filename'].lower()
+                        'debug': 'debug' in item['filename'].lower() or 'FASTDBG' in item['filename']
                     })
 
             pkg['executables'] = exes

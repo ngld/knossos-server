@@ -29,9 +29,7 @@ import requests
 logging.basicConfig(level=logging.DEBUG, format='[%(asctime)s@%(module)s] %(funcName)s %(levelname)s: %(message)s')
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'knossos'))
 
-LIST_PAGE = 'http://www.hard-light.net/forums/index.php?board=173.0'
-LIN64_LIST = 'https://build.tproxy.de/builders/fs2-trunk-linux'
-LIN64_API = 'https://build.tproxy.de/json/builders/fs2-trunk-linux/builds/%s'
+LIST_PAGE = 'https://dl.bintray.com/scp-fs2open/FSO/'
 sess = requests.Session()
 
 MOD_TPL = {
@@ -101,30 +99,15 @@ PKG_TPL = {
 }
 
 
-def add_nightly(link, rev, os_name, info):
-    if os_name == 'FreeBSD':
-        # Sorry but we don't support BSDs
-        return
-
-    if os_name not in ('Windows', 'Linux', 'OS X'):
+def add_nightly(link, date, rev, os_name, info):
+    if os_name not in ('Win32', 'Win64', 'Linux', 'MacOSX'):
         logging.warning('Unknown OS %s!', os_name)
         return
 
-    page = sess.get(link.replace('&amp;', '&'))
     if info['mod']['version'] is None:
-        version = re.search(r'fso_Standard_([0-9]+)_[0-9a-f]+\.', page.text)
-        if not version:
-            logging.error('Failed to find a build date for "%s %s"!', rev, os_name)
-            return
+        info['mod']['version'] = '0.0.%s+%s' % (date, rev)
 
-        info['mod']['version'] = '0.0.%s+%s' % (version.group(1), rev)
-
-    dl_link = re.search(r'Group: Standard<br/><a href="(http://[^"]+)"', page.text)
-    if not dl_link:
-        logging.error('Failed to find a download link for "%s %s"!', rev, os_name)
-        return
-
-    dl_link = dl_link.group(1)
+    dl_link = os.path.join(LIST_PAGE, link)
     pkg = copy.deepcopy(PKG_TPL)
     pkg['files'] = [{
         'filename': os.path.basename(dl_link),
@@ -135,8 +118,8 @@ def add_nightly(link, rev, os_name, info):
 
     version = info['mod']['version']
 
-    if os_name == 'Windows':
-        info['has_windows'] = True
+    if os_name == 'Win32':
+        info['has_win32'] = True
         pkg['name'] = 'Windows'
         pkg['environment'] = [
             {
@@ -145,64 +128,27 @@ def add_nightly(link, rev, os_name, info):
             },
             {
                 'type': 'cpu_feature',
-                'value': 'sse2'
+                'value': 'x86_32'
             }
         ]
         info['mod']['packages'].append(pkg)
-
-        no_sse_link = re.search(r'Group: NO-SSE<br/><a href="(http://[^"]+)"', page.text)
-        if not no_sse_link:
-            logging.error('Failed to find the no-sse download link for "%s %s"!', rev, os_name)
-        else:
-            no_sse_link = no_sse_link.group(1)
-            pkg = PKG_TPL.copy()
-            pkg['files'] = [{
-                'filename': os.path.basename(no_sse_link),
-                'is_archive': True,
-                'dest': '',
-                'urls': [no_sse_link]
-            }]
-
-            pkg['name'] = 'Windows NO-SSE'
-            pkg['status'] = 'recommended'
-            pkg['environment'] = [
-                {
-                    'type': 'os',
-                    'value': 'windows'
-                }
-            ]
-            info['mod']['packages'].append(pkg)
-
-        sse_link = re.search(r'Group: SSE<br/><a href="(http://[^"]+)"', page.text)
-        if not sse_link:
-            logging.error('Failed to find the sse download link for "%s %s"!', rev, os_name)
-            return
-        else:
-            sse_link = sse_link.group(1)
-            pkg = PKG_TPL.copy()
-            pkg['files'] = [{
-                'filename': os.path.basename(sse_link),
-                'is_archive': True,
-                'dest': '',
-                'urls': [sse_link]
-            }]
-
-            pkg['name'] = 'Windows SSE'
-            pkg['status'] = 'recommended'
-            pkg['environment'] = [
-                {
-                    'type': 'os',
-                    'value': 'windows'
-                },
-                {
-                    'type': 'cpu_feature',
-                    'value': 'sse'
-                }
-            ]
-            info['mod']['packages'].append(pkg)
+    elif os_name == 'Win64':
+        info['has_win64'] = True
+        pkg['name'] = 'Windows (64bit)'
+        pkg['environment'] = [
+            {
+                'type': 'os',
+                'value': 'windows'
+            },
+            {
+                'type': 'cpu_feature',
+                'value': 'x86_64'
+            }
+        ]
+        info['mod']['packages'].append(pkg)
     elif os_name == 'Linux':
-        info['has_linux'] = True
-        pkg['name'] = 'Linux'
+        info['has_linux64'] = True
+        pkg['name'] = 'Linux (64bit)'
         pkg['environment'] = [
             {
                 'type': 'os',
@@ -210,7 +156,7 @@ def add_nightly(link, rev, os_name, info):
             },
             {
                 'type': 'cpu_feature',
-                'value': 'x86_32'
+                'value': 'x86_64'
             }
         ]
         info['mod']['packages'].append(pkg)
@@ -229,141 +175,51 @@ def add_nightly(link, rev, os_name, info):
 def fetch_nightlies(json_file):
     global LIST_PAGE, sess
 
-    if os.path.isfile(json_file):
-        with open(json_file, 'r') as stream:
-            repo = json.load(stream)
-    else:
-        repo = {'mods': []}
+    repo = {'mods': []}
 
-    old_revs = {}
-    for mod in repo['mods']:
-        rev = mod['version']
-        if '+' in rev:
-            # 0.0.20150929+0a9ae3e
-            rev = rev[rev.find('+') + 1:]
-        else:
-            # 0.0.4903
-            rev = rev.split('.')[2]
-
-        info = old_revs[rev] = {
-            'mod': mod,
-            'has_macos': False,
-            'has_linux': False,
-            'has_linux64': False,
-            'has_windows': False
-        }
-
-        for pkg in mod['packages']:
-            if pkg['name'] == 'Windows':
-                info['has_windows'] = True
-            elif pkg['name'] == 'Mac OS X':
-                info['has_macos'] = True
-            elif pkg['name'] == 'Linux':
-                info['has_linux'] = True
-            elif pkg['name'] == 'Linux (64bit)':
-                info['has_linux64'] = True
-
+    revs = {}
     nlist = sess.get(LIST_PAGE)
 
-    for m in re.finditer(r'<a href="([^"]+)">Nightly \(([^\)]+)\): [0-9]+ [A-Za-z]+ [0-9]+ - Revision ([0-9a-f]+)</a>', nlist.text):
-        rev = m.group(3)
-        if rev in old_revs:
-            info = old_revs[rev]
-            if m.group(2) == 'Windows' and info['has_windows']:
+    # <pre><a onclick="navi(event)" href=":nightly_20160727_aec35e4-builds-Linux.tar.gz" rel="nofollow">nightly_20160727_aec35e4-builds-Linux.tar.gz</a></pre>
+    for m in re.finditer(r'<a [^>]+>(?P<file>nightly_(?P<date>[0-9]+)_(?P<rev>[0-9a-f]+)\-builds\-(?P<os>[A-Za-z3264]+)\.(?P<ext>tar\.gz|zip))</a>', nlist.text):
+        rev =  m.group('rev')
+        if rev in revs:
+            info = revs[rev]
+            if m.group('os') == 'Win32' and info['has_win32']:
                 continue
-            elif m.group(2) == 'Linux' and info['has_linux']:
+            elif m.group('os') == 'Win64' and info['has_win64']:
                 continue
-            elif m.group(2) == 'OS X' and info['has_macos']:
+            elif m.group('os') == 'Linux' and info['has_linux64']:
+                continue
+            elif m.group('os') == 'MacOSX' and info['has_macos']:
                 continue
         else:
             mod = copy.deepcopy(MOD_TPL)
             repo['mods'].append(mod)
             
-            info = old_revs[rev] = {
+            info = revs[rev] = {
                 'mod': mod,
                 'has_macos': False,
                 'has_linux': False,
                 'has_linux64': False,
-                'has_windows': False
+                'has_win32': False,
+                'has_win64': False
             }
 
-        add_nightly(m.group(1), rev, m.group(2), info)
+        add_nightly(m.group('file'), m.group('date'), rev, m.group('os'), info)
 
-    nlist = sess.get(LIN64_LIST)
-
-    for m in re.finditer(r'">([0-9a-f]{7})[0-9a-f]+</a>\s*</div>\s*</div>\s*</td>\s*<td class="success">success</td>\s*<td><a href="[^"]+">#([0-9]+)</a></td>', nlist.text):
-        rev = m.group(1)
-
-        if rev in old_revs:
-            info = old_revs[rev]
-            if info['has_linux64']:
-                continue
-        else:
-            mod = copy.deepcopy(MOD_TPL)
-            repo['mods'].append(mod)
-
-            info = old_revs[rev] = {
-                'mod': mod,
-                'has_macos': False,
-                'has_linux': False,
-                'has_linux64': False,
-                'has_windows': False
-            }
-
-        link = LIN64_API % m.group(2)
-        page = sess.get(link)
-        data = json.loads(page.text)
-
-        rev = data['sourceStamps'][0]['revision'][:7]
-        stamp = time.strftime('%Y%m%d', time.gmtime(data['times'][1]))
-        version = '0.0.%s+%s' % (stamp, rev)
-
-        if info['mod']['version'] is None:
-            info['mod']['version'] = version
-
-        dl_link = None
-        for step in data['steps']:
-            if step['name'] == 'upload':
-                dl_link = next(iter(step['urls'].values()))
-                break
-
-        if not dl_link:
-            logging.error('Failed to find download link for "%s"!', link)
-            continue
-
-        info['has_linux64'] = True
-
-        pkg = copy.deepcopy(PKG_TPL)
-        pkg['files'] = [{
-            'filename': os.path.basename(dl_link),
-            'is_archive': True,
-            'dest': '',
-            'urls': [dl_link]
-        }]
-        pkg['name'] = 'Linux (64bit)'
-        pkg['environment'] = [
-            {
-                'type': 'os',
-                'value': 'linux'
-            },
-            {
-                'type': 'cpu_feature',
-                'value': 'x86_64'
-            }
-        ]
-        info['mod']['packages'].append(pkg)
-
-    with open(json_file, 'w') as stream:
-        json.dump(repo, stream)
+    if not json_file:
+        print(json.dumps(repo))
+    else:
+        with open(json_file, 'w') as stream:
+            json.dump(repo, stream)
 
 
 def main(args):
-    parser = argparse.ArgumentParser(description='Updates the nightlies repo.')
-    parser.add_argument('repo_cfg', help='The repository info.')
-
-    args = parser.parse_args(args)
-
-    fetch_nightlies(args.repo_cfg)
+    if len(args) < 1:
+        fetch_nightlies(None)
+    else:
+        fetch_nightlies(args[0])
 
 
 if __name__ == '__main__':
