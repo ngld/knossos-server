@@ -157,7 +157,7 @@ def add_nightly(link, date, rev, os_name, info):
             }
         ]
         info['mod']['packages'].append(pkg)
-    elif os_name == 'OS X':
+    elif os_name == 'MacOSX':
         info['has_macos'] = True
         pkg['name'] = 'Mac OS X'
         pkg['environment'] = [
