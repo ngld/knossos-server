@@ -17,12 +17,10 @@ from __future__ import absolute_import, print_function, division
 import os.path
 import codecs
 import sys
-import argparse
 import logging
 import json
 import re
 import copy
-import time
 import requests
 
 
@@ -35,9 +33,10 @@ sess = requests.Session()
 MOD_TPL = {
     'id': 'FSO_nightlies',
     'title': 'FSO Nightly',
+    'type': 'engine',
     'version': None,
-    'description': 'The cutting-edge of what the SCP is doing. New builds, using the latest SVN changes, are automatically posted every evening.',
-    'logo': 'https://fsnebula.org/uploads/img/7.bmp',
+    'description': 'The cutting-edge of what the SCP is doing. New builds, using the latest git changes, are automatically posted every evening.',
+    'logo': 'https://fsnebula.org/uploads/img/5.bmp',
     'notes': '',
     'folder': 'FSO_nightly',
     'packages': [],
@@ -115,8 +114,6 @@ def add_nightly(link, date, rev, os_name, info):
         'dest': '',
         'urls': [dl_link]
     }]
-
-    version = info['mod']['version']
 
     if os_name == 'Win32':
         info['has_win32'] = True
@@ -196,7 +193,7 @@ def fetch_nightlies(json_file):
         else:
             mod = copy.deepcopy(MOD_TPL)
             repo['mods'].append(mod)
-            
+
             info = revs[rev] = {
                 'mod': mod,
                 'has_macos': False,
