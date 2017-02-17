@@ -55,8 +55,13 @@ def receive_drop(t, token, kid):
     if request.method == 'OPTIONS':
         return '', 200, headers
 
-    if time.time() > t:
-        return 'Access denied', 403, headers
+    # Since this check only runs after the upload is completed, we have to take into account that uploading takes a
+    # while. Allow up to half an hour of delay.
+    if time.time() - (30 * 60) > t:
+        return jsonify(
+            error=True,
+            message='You took too long to upload!'
+        ), 200, headers
 
     try:
         key = app.config['API_KEYS'][kid]
